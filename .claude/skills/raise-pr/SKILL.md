@@ -29,6 +29,6 @@ The motivation or problem it solves.
 - Modules and files touched, grouped by area (backend / frontend / schema / plan).
 
 ## How to test
-1. Exact commands (`make test`, `make lint`, `make dev`) and manual steps.
+1. Exact commands (`make test`, `make dev`) and manual steps.
 2. Expected result.
 ```
