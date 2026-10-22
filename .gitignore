@@ -1,3 +1,22 @@
-AGENTS.md
 .DS_Store
 plan/
+
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+
+# user data (keep example projects and folder placeholders)
+data/*
+!data/.gitkeep
+projects/*
+!projects/.gitkeep
+!projects/example-*

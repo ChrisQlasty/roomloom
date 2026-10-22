@@ -1,0 +1,37 @@
+[project]
+name = "roomloom"
+version = "0.1.0"
+description = "RoomLoom backend: scene store, ops, importer and agent"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "anthropic",
+    "fastapi",
+    "google-genai",
+    "httpx",
+    "numpy",
+    "pillow",
+    "pydantic>=2",
+    "pydantic-settings",
+    "shapely",
+    "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
