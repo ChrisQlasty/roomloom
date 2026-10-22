@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.schema import io
 from app.schema.io import dump_scene, load_scene, save_scene
+from app.store import atomic
 from tests.paths import EXAMPLE_PROJECT
 
 EXAMPLE_SCENE = EXAMPLE_PROJECT / "scene.json"
@@ -74,7 +74,7 @@ def test_failed_save_keeps_old_file(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     def fail(*_args: object) -> None:
         raise OSError("disk full")
 
-    monkeypatch.setattr(io.os, "replace", fail)
+    monkeypatch.setattr(atomic.os, "replace", fail)
     with pytest.raises(OSError, match="disk full"):
         save_scene(load_scene(EXAMPLE_SCENE), target)
     assert target.read_text() == "old"
