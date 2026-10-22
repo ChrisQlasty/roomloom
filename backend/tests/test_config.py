@@ -1,8 +1,7 @@
 from app.config import Settings
 
 
-def test_settings_defaults_need_no_keys(monkeypatch) -> None:
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+def test_settings_defaults_need_no_keys() -> None:
     settings = Settings(_env_file=None)
     assert settings.anthropic_api_key == ""
     assert settings.monthly_budget_usd == 30.0
