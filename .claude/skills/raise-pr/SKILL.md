@@ -25,6 +25,10 @@ The motivation or problem it solves.
 ## Features
 - User-visible or agent-visible capabilities added or changed.
 
+## App state after this PR
+- What the user sees when running the app with this PR merged (pages, panels, 3D scene).
+- What the user is able to do, as a whole, not only what is new (e.g. "walk through the imported rooms; no objects or roof yet").
+
 ## What was changed
 - Modules and files touched, grouped by area (backend / frontend / schema / plan).
 
