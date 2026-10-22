@@ -1,0 +1,725 @@
+{
+ "about": "Irregular L of five rooms (the entrance hall is two rectangles) in a Plan frame, with small gaps to snap, doors, windows, a passage, memories and a notes area.",
+ "items": [
+  {
+   "id": "3458764600000000005",
+   "type": "frame",
+   "data": {
+    "title": "Plan",
+    "format": "custom",
+    "type": "freeform",
+    "showContent": true
+   },
+   "style": {
+    "fillColor": "#ffffffff"
+   },
+   "geometry": {
+    "width": 4200,
+    "height": 2600
+   },
+   "position": {
+    "x": 1900.0,
+    "y": 1100.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000006",
+   "type": "shape",
+   "data": {
+    "content": "<p>Entrance hall</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 2000,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 400.0,
+    "y": 1200.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000007",
+   "type": "shape",
+   "data": {
+    "content": "<p>Entrance hall</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 890.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 800.0,
+    "y": 1755.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000008",
+   "type": "shape",
+   "data": {
+    "content": "<p>Room 1 #classroom h=3.0</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 1200,
+    "height": 800,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1200.0,
+    "y": 600.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000009",
+   "type": "shape",
+   "data": {
+    "content": "<p>Room 2 #classroom</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 1192.0,
+    "height": 805.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 2404.0,
+    "y": 602.5,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000010",
+   "type": "shape",
+   "data": {
+    "content": "<p>Corridor #corridor</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 2400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1800.0,
+    "y": 1150.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000011",
+   "type": "shape",
+   "data": {
+    "content": "<p>Gym #gym h=4.5</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 795.0,
+    "height": 900,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1397.5,
+    "y": 1750.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000012",
+   "type": "shape",
+   "data": {
+    "content": "<p>h=2.2</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#f24726",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 120.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 200.0,
+    "y": 1160.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000013",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#f24726",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 100.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 600.0,
+    "y": 1150.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000014",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#f24726",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 850.0,
+    "y": 1000.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000015",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#f24726",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 2650.0,
+    "y": 1000.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000016",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#f24726",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1250.0,
+    "y": 1300.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000017",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#808080",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 200.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1000.0,
+    "y": 1800.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000018",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#2d9bf0",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 200.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1000.0,
+    "y": 200.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000019",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#2d9bf0",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 200.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1400.0,
+    "y": 200.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000020",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#2d9bf0",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 200.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 2200.0,
+    "y": 200.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000021",
+   "type": "shape",
+   "data": {
+    "content": "<p>sill=1.0 h=1.2</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#2d9bf0",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 200.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 3000.0,
+    "y": 600.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000022",
+   "type": "shape",
+   "data": {
+    "content": "<p>sill=1.2 h=1.5</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#2d9bf0",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 200.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1400.0,
+    "y": 2200.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000023",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>green oil paint up to 1.5 m</p><p>— Ania</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "yellow",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 80.0,
+    "height": 80.0
+   },
+   "position": {
+    "x": 1200.0,
+    "y": 600.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000024",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>plants on every windowsill</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "light_yellow",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 80.0,
+    "height": 80.0
+   },
+   "position": {
+    "x": 2400.0,
+    "y": 600.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000025",
+   "type": "text",
+   "data": {
+    "content": "<p>draft v2, ignore</p>"
+   },
+   "style": {
+    "fillColor": "transparent",
+    "fontSize": "24"
+   },
+   "geometry": {
+    "width": 200,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 3200.0,
+    "y": 1700.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000026",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "triangle"
+   },
+   "style": {
+    "fillColor": "#2dc75c",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100,
+    "height": 100,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 3450.0,
+    "y": 450.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000027",
+   "type": "shape",
+   "data": {
+    "content": "<p>5 m</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#1a1a1a",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 500,
+    "height": 10.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 450.0,
+    "y": 2405.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000005"
+   }
+  },
+  {
+   "id": "3458764600000000028",
+   "type": "shape",
+   "data": {
+    "content": "<p>Notes</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#8fd14f",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 1000,
+    "height": 800,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 5000.0,
+    "y": 400.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000029",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>Corridor floor: terrazzo</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "yellow",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 80.0,
+    "height": 80.0
+   },
+   "position": {
+    "x": 4700,
+    "y": 300,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000030",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>The whole building smelled of floor polish — Bartek</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "light_green",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 80.0,
+    "height": 80.0
+   },
+   "position": {
+    "x": 5200,
+    "y": 300,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000031",
+   "type": "image",
+   "data": {
+    "title": "old photo"
+   },
+   "geometry": {
+    "width": 300,
+    "height": 200
+   },
+   "position": {
+    "x": 4500,
+    "y": 1500,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  }
+ ],
+ "connectors": []
+}

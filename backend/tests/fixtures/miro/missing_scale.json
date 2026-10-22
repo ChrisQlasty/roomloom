@@ -1,0 +1,56 @@
+{
+ "about": "Two rooms and no scale bar: the import must fail.",
+ "items": [
+  {
+   "id": "3458764600000000042",
+   "type": "shape",
+   "data": {
+    "content": "<p>Room A</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 200.0,
+    "y": 150.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000043",
+   "type": "shape",
+   "data": {
+    "content": "<p>Room B</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 600.0,
+    "y": 150.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  }
+ ],
+ "connectors": []
+}

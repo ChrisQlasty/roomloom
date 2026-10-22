@@ -1,0 +1,166 @@
+{
+ "about": "Rooms inside a Plan frame far from the canvas centre (positions relative to the frame); one rectangle outside the frame is ignored.",
+ "items": [
+  {
+   "id": "3458764600000000058",
+   "type": "frame",
+   "data": {
+    "title": "Plan",
+    "format": "custom",
+    "type": "freeform",
+    "showContent": true
+   },
+   "style": {
+    "fillColor": "#ffffffff"
+   },
+   "geometry": {
+    "width": 1200,
+    "height": 800
+   },
+   "position": {
+    "x": 5400.0,
+    "y": -2800.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000059",
+   "type": "shape",
+   "data": {
+    "content": "<p>Kitchen</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 300.0,
+    "y": 250.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000058"
+   }
+  },
+  {
+   "id": "3458764600000000060",
+   "type": "shape",
+   "data": {
+    "content": "<p>Pantry</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 700.0,
+    "y": 250.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000058"
+   }
+  },
+  {
+   "id": "3458764600000000061",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#808080",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 100,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 500.0,
+    "y": 250.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000058"
+   }
+  },
+  {
+   "id": "3458764600000000062",
+   "type": "shape",
+   "data": {
+    "content": "<p>1 m</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#1a1a1a",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100,
+    "height": 10.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 150.0,
+    "y": 605.0,
+    "origin": "center",
+    "relativeTo": "parent_top_left"
+   },
+   "parent": {
+    "id": "3458764600000000058"
+   }
+  },
+  {
+   "id": "3458764600000000063",
+   "type": "shape",
+   "data": {
+    "content": "<p>Sketch outside the frame</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 7200.0,
+    "y": -2950.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  }
+ ],
+ "connectors": []
+}
