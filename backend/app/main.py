@@ -3,7 +3,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import projects
 from app.config import Settings, get_settings
+from app.store.projects import ProjectStore
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -27,4 +29,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Liveness probe used by the frontend."""
         return {"status": "ok"}
 
+    projects.install(app, ProjectStore(settings.projects_dir))
     return app
