@@ -37,6 +37,24 @@ def png(size: tuple[int, int] = (64, 64), mode: str = "RGBA") -> bytes:
     return buf.getvalue()
 
 
+def palette_png(size: tuple[int, int] = (4, 4)) -> bytes:
+    """A palette PNG whose every pixel is palette index 0, marked transparent via tRNS."""
+    img = Image.new("P", size, 0)
+    img.putpalette([0, 0, 0, 255, 0, 0])
+    buf = io.BytesIO()
+    img.save(buf, "PNG", transparency=0)
+    return buf.getvalue()
+
+
+def cmyk_jpeg(size: tuple[int, int] = (8, 8), icc: bytes | None = None) -> bytes:
+    """A CMYK JPEG, optionally carrying an ICC profile."""
+    buf = io.BytesIO()
+    Image.new("CMYK", size, (0, 255, 255, 0)).save(
+        buf, "JPEG", **({"icc_profile": icc} if icc else {})
+    )
+    return buf.getvalue()
+
+
 def open_bytes(data: bytes) -> Image.Image:
     """Decode image bytes."""
     img = Image.open(io.BytesIO(data))
