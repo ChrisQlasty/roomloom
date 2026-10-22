@@ -20,3 +20,7 @@ data/*
 projects/*
 !projects/.gitkeep
 !projects/example-*
+# files the running app adds to an example project (history, thumbnails); scene.json stays tracked
+projects/example-*/history/
+projects/example-*/assets/thumbs/
+projects/example-*/thumbnail.jpg

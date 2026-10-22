@@ -5,7 +5,7 @@ Use `RoomLoom` as the display name and `roomloom` for packages, folders and iden
 
 ## Current state
 
-The repo scaffold (task T01) and the scene schema (task T02) exist so far. Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
+The repo scaffold (task T01), the scene schema (task T02) and the project store with history and photo uploads (task T03) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); the browser does not use it yet. Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
 
 The scene document format is defined by the Pydantic models in `backend/app/schema/`. A hand-made example project, `projects/example-l-house/`, holds an L-shaped building with five rooms, a sunken gym reached by two steps, a flat roof, three objects and one photo pin. Tests use it as their fixture.
 
@@ -80,6 +80,38 @@ This rewrites three generated files (never edit them by hand):
 - `frontend/src/types/scene.ts`: TypeScript types, generated from the schema with `json-schema-to-typescript`
 
 Running it twice gives no diff. `make test` fails if the shared schemas are out of date.
+
+## Projects, history and assets
+
+Each project is a folder `projects/<slug>/` (set `PROJECTS_DIR` in `.env` to keep them elsewhere):
+
+```
+project.json            name, description, language, ...
+scene.json              the current scene, always written atomically
+history/index.jsonl     one line per change set: seq, time, source, description, label, scene_version
+history/<seq>.json.gz   the full scene right after that change set
+assets/<sha256>.<ext>   uploaded photos and textures, stored once per content, never deleted
+assets/thumbs/          320 px JPEG thumbnails
+thumbnail.jpg           the project-picker image
+```
+
+Every change is saved as a full snapshot. Restoring an old change set never deletes anything: it adds a new change set ("Restored to #3"). A project with a scene but no history (like the example project) gets a first "Imported" entry on its first change. While the app runs, the example project gains `history/`, `assets/thumbs/` and `thumbnail.jpg`; git ignores them. Changes to its `scene.json` do show up in `git status`; undo them with `git checkout projects/example-l-house`.
+
+Uploaded photos are turned upright using their EXIF orientation, stripped of all EXIF data (including GPS position), shrunk to at most 4096 px on the long side and saved as JPEG.
+
+Try it with the backend running (`make dev`):
+
+```sh
+curl localhost:8000/api/projects                                     # project cards
+curl localhost:8000/api/projects/example-l-house/scene               # current scene
+curl -F file=@photo.jpg localhost:8000/api/projects/example-l-house/assets   # upload a photo
+curl localhost:8000/api/projects/example-l-house/history             # change sets
+curl -X POST localhost:8000/api/projects/example-l-house/history/1/restore
+curl -X POST -H 'content-type: application/json' -d '{"label": "Before furniture"}' \
+  localhost:8000/api/projects/example-l-house/history/1/label
+```
+
+Other endpoints: `GET /api/projects/{slug}`, `GET /api/projects/{slug}/assets/{id}` (add `?thumb=1` for the thumbnail), and `POST` / `GET /api/projects/{slug}/thumbnail`. All of them are listed at http://localhost:8000/docs.
 
 ## Scene conventions
 
