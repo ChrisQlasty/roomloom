@@ -6,6 +6,8 @@ from pydantic import Field
 
 from app.schema.common import SchemaModel, Vec3
 
+SLUG_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+
 
 class Spawn(SchemaModel):
     """Where the visitor starts when the project opens."""
@@ -18,7 +20,7 @@ class Project(SchemaModel):
     """One project: a building, its profile and how the agent should talk about it."""
 
     id: str = Field(min_length=1, description="Stable project id.")
-    slug: str = Field(pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$", description="Folder name and URL part.")
+    slug: str = Field(pattern=SLUG_PATTERN, description="Folder name and URL part.")
     name: str = Field(min_length=1, description="Display name.")
     description: str = Field("", description="Short description for the project picker.")
     profile_prompt: str = Field(

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     miro_token: str = ""
     elevenlabs_api_key: str = ""
     monthly_budget_usd: float = 30.0
+    projects_dir: Path = REPO_ROOT / "projects"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 

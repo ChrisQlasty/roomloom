@@ -1,15 +1,12 @@
 """Read and write scene.json with stable formatting and atomic replacement."""
 
 import json
-import os
-import secrets
-import stat
 from pathlib import Path
 
 from app.schema.scene import Scene
+from app.store.atomic import write_atomic
 
 _INDENT = "  "
-_NEW_FILE_MODE = 0o666  # narrowed by the process umask, like any normally created file
 
 
 def _is_number_array(value: object) -> bool:
@@ -46,24 +43,11 @@ def load_scene(path: Path) -> Scene:
 
 
 def save_scene(scene: Scene, path: Path) -> None:
-    """Write a scene atomically: a temp file in the same folder, fsync, then rename over `path`.
+    """Write a scene atomically (see `write_atomic`).
 
     The scene is validated again first (models are mutable), so an invalid scene raises
-    `ValidationError` and leaves the file untouched. An existing file keeps its permissions.
+    `ValidationError` and leaves the file untouched.
     """
     text = dump_scene(scene)
     Scene.model_validate_json(text)
-    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else None
-    tmp = path.with_name(f".{path.name}.{secrets.token_hex(4)}.tmp")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, _NEW_FILE_MODE)
-    try:
-        with os.fdopen(fd, "wb") as f:
-            if mode is not None:
-                os.fchmod(f.fileno(), mode)
-            f.write(text.encode())
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_atomic(path, text.encode())
