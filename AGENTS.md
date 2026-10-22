@@ -55,10 +55,12 @@ plan/                   architecture, conventions, limitations, tasks
 9. **Performance budget:** 60 fps on a MacBook Air M1 at the "medium" preset with the example project. Prefer merged static geometry and instancing.
 10. **Stay in scope.** Implement only the current task. Out-of-scope findings go to `plan/tasks/STATUS.md` under "Discovered".
 11. **Small modules**, type hints everywhere, docstrings on public functions, no dead code.
+12. **Keep `README.md` current.** When a change affects how to install, run, test or use the app (commands, ports, env keys, prerequisites, what the user sees), update `README.md` in the same change.
 
-## What is in this repo right now
+## Planning documents
 
-Planning documents only. Code is produced task by task by coding agents (Claude Code).
+Code is produced task by task by coding agents (Claude Code); `plan/tasks/STATUS.md` records which tasks are done.
+`plan/` is git-ignored: it lives only in the local checkout and is never committed.
 
 | File | Purpose |
 |---|---|
