@@ -46,6 +46,28 @@ def test_list_skips_stray_and_broken_folders(store: ProjectStore, projects_root:
     assert [s.slug for s in store.list()] == [SLUG]
 
 
+def test_list_sorts_naive_created_at_with_aware_history_times(store: ProjectStore) -> None:
+    asyncio.run(store.history.commit(SLUG, store.load_scene(SLUG), "edit", "user"))
+    asyncio.run(store.create(new_project(), store.load_scene(SLUG)))
+    raw = json.loads((store.require("new-house") / "project.json").read_text())
+    (store.require("new-house") / "history").rename(store.require("new-house") / "old-history")
+    raw["created_at"] = "2020-01-01T00:00:00"  # naive, as a hand-written project.json may be
+    (store.require("new-house") / "project.json").write_text(json.dumps(raw))
+    summaries = store.list()
+    assert [s.slug for s in summaries] == [SLUG, "new-house"]
+    assert summaries[1].updated_at == datetime(2020, 1, 1, tzinfo=UTC)
+
+
+def test_asset_lookup_follows_scene_changes(store: ProjectStore) -> None:
+    assert store.asset(SLUG, "ast_entrance_hall_photo") is not None
+    assert store.asset(SLUG, "ast_new") is None
+    scene = store.load_scene(SLUG)
+    meta = scene.assets["ast_entrance_hall_photo"]
+    added = scene.model_copy(update={"assets": {**scene.assets, "ast_new": meta}})
+    asyncio.run(store.history.commit(SLUG, added, "add", "user"))
+    assert store.asset(SLUG, "ast_new") == meta
+
+
 def test_list_of_missing_root_is_empty(tmp_path: Path) -> None:
     assert ProjectStore(tmp_path / "nope").list() == []
 

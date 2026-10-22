@@ -3,7 +3,7 @@
 import logging
 import re
 import shutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import Field, ValidationError
@@ -12,7 +12,7 @@ from app.images.processing import PROJECT_THUMB_PX, thumbnail_jpeg
 from app.schema.history import ChangeSetMeta
 from app.schema.io import load_scene
 from app.schema.project import SLUG_PATTERN, Project
-from app.schema.scene import Scene
+from app.schema.scene import AssetMeta, Scene
 from app.store.assets import AssetStore
 from app.store.atomic import write_atomic
 from app.store.history import BASELINE_DESCRIPTION, History
@@ -43,12 +43,19 @@ def is_valid_slug(slug: str) -> bool:
     return _SLUG_RE.fullmatch(slug) is not None
 
 
+def _as_utc(ts: datetime) -> datetime:
+    """`ts` with a time zone; naive times are UTC by convention (see `Project.created_at`)."""
+    return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
 class ProjectStore:
     """All projects under one root folder, with their shared `History`."""
 
     def __init__(self, root: Path) -> None:
         self.root = root
         self.history = History(self)
+        # slug -> (scene.json identity, scene.assets); see `asset`.
+        self._assets: dict[str, tuple[tuple[int, int, int], dict[str, AssetMeta]]] = {}
 
     def require(self, slug: str) -> Path:
         """Folder of an existing project; raises `ProjectNotFound` otherwise."""
@@ -66,7 +73,7 @@ class ProjectStore:
         entries = self.history.list(slug)
         return ProjectSummary(
             **project.model_dump(),
-            updated_at=entries[-1].ts if entries else project.created_at,
+            updated_at=_as_utc(entries[-1].ts if entries else project.created_at),
             has_thumbnail=self.thumbnail_path(slug).is_file(),
         )
 
@@ -87,6 +94,22 @@ class ProjectStore:
     def load_scene(self, slug: str) -> Scene:
         """The current scene."""
         return load_scene(self.require(slug) / "scene.json")
+
+    def asset(self, slug: str, asset_id: str) -> AssetMeta | None:
+        """Metadata of one asset of the current scene, or None if the scene has no such asset.
+
+        scene.assets is cached and re-read only when scene.json changes on disk, so serving many
+        asset files does not parse the whole scene each time.
+        """
+        path = self.require(slug) / "scene.json"
+        st = path.stat()
+        key = (st.st_ino, st.st_mtime_ns, st.st_size)
+        cached = self._assets.get(slug)
+        if cached is None or cached[0] != key:
+            cached = (key, load_scene(path).assets)
+            self._assets[slug] = cached
+        meta = cached[1].get(asset_id)
+        return meta.model_copy() if meta else None
 
     def assets(self, slug: str) -> AssetStore:
         """Asset files of the project."""

@@ -146,11 +146,12 @@ def test_invalid_scene_is_rejected_before_anything_is_written(store: ProjectStor
     assert store.history.list(SLUG) == []
 
 
-@pytest.mark.parametrize("failing_call", [1, 2, 3, 4])
+@pytest.mark.parametrize("failing_call", [1, 2, 3, 4, 5])
 def test_crash_between_steps_never_corrupts_scene_json(
     store: ProjectStore, monkeypatch: pytest.MonkeyPatch, failing_call: int
 ) -> None:
-    """Writes are baseline snapshot, new snapshot, scene.json, index; fail each one in turn."""
+    """Writes are baseline snapshot, baseline index, new snapshot, scene.json, index; fail each
+    one in turn."""
     asyncio.run(store.history.commit(SLUG, store.load_scene(SLUG), "warm-up", "user"))
     (store.require(SLUG) / "history" / "index.jsonl").unlink()  # force a baseline write again
     before = disk_scene(store)
@@ -170,13 +171,40 @@ def test_crash_between_steps_never_corrupts_scene_json(
 
     after = disk_scene(store)  # always loads and validates
     changed = (after.version, content(after)) == (before.version + 1, content(with_note(before, 1)))
-    assert after == before if failing_call <= 3 else changed
+    assert after == before if failing_call <= 4 else changed
     # The store keeps working: the next commit gets a fresh seq and a higher version.
     entry = asyncio.run(store.history.commit(SLUG, with_note(before, 2), "next", "user"))
     assert entry.seq == store.history.list(SLUG)[-1].seq
     assert disk_scene(store).version == entry.scene_version > after.version
     assert store.history.snapshot(SLUG, entry.seq) == disk_scene(store)
+    # The baseline is the scene from before the crashed commit, never the half-committed one.
+    assert store.history.list(SLUG)[0].description == "Imported"
+    assert store.history.snapshot(SLUG, 1) == before
     assert not list(store.require(SLUG).rglob("*.tmp"))
+
+
+def test_apply_parses_the_scene_once(store: ProjectStore, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[Path] = []
+    real = history_module.load_scene
+
+    def counting(path: Path) -> Scene:
+        calls.append(path)
+        return real(path)
+
+    monkeypatch.setattr(history_module, "load_scene", counting)
+    asyncio.run(store.history.apply(SLUG, lambda s: with_note(s, 1), "x", "user"))
+    assert len(calls) == 1
+
+
+def test_apply_change_mutating_the_scene_keeps_the_baseline(store: ProjectStore) -> None:
+    original = store.load_scene(SLUG)
+
+    def mutate(scene: Scene) -> Scene:
+        scene.notes.append(Note(id="note_mut", text="in place"))
+        return scene
+
+    asyncio.run(store.history.apply(SLUG, mutate, "x", "user"))
+    assert store.history.snapshot(SLUG, 1) == original
 
 
 def test_unknown_project(store: ProjectStore) -> None:

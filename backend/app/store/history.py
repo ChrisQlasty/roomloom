@@ -3,6 +3,8 @@
 A commit runs in three atomic steps: the snapshot, then `scene.json`, then the rewritten
 `index.jsonl`. A crash between steps leaves at worst an orphan snapshot (overwritten by the next
 commit) or a scene one version ahead of the index; `scene.json` itself is never half-written.
+A missing baseline is snapshotted and indexed before any of that, so it always holds the scene
+that was on disk before the first commit.
 """
 
 from __future__ import annotations
@@ -71,26 +73,48 @@ def _append(
 
 
 def _commit_sync(
-    project_dir: Path, new_scene: Scene, description: str, source: ChangeSource
-) -> ChangeSetMeta:
-    """Bump the version, then write snapshot, scene.json and index in that order."""
-    project_dir.joinpath("history").mkdir(exist_ok=True)
+    project_dir: Path,
+    change: Callable[[Scene | None], Scene | None],
+    description: str,
+    source: ChangeSource,
+) -> ChangeSetMeta | None:
+    """Run `change` on the current scene (None if there is none yet); unless it returns None,
+    bump the version, then write snapshot, scene.json and index in that order."""
     scene_path = project_dir / "scene.json"
     current = load_scene(scene_path) if scene_path.exists() else None
     version = (current.version if current else 0) + 1
+    entries = _read_index(project_dir)
+    # A project written without history (hand-made or older) records what is on disk first;
+    # serialise it before `change` gets a chance to mutate it.
+    baseline_text = dump_scene(current) if current and not entries else None
+    new_scene = change(current)
+    if new_scene is None:
+        return None
     data = new_scene.model_dump(mode="json") | {"version": version}
     text = dump_scene(Scene.model_validate(data))
-    entries = _read_index(project_dir)
-    if current and not entries:
-        # A project written without history (hand-made or older): record what is on disk first.
-        baseline_text = dump_scene(current)
+    project_dir.joinpath("history").mkdir(exist_ok=True)
+    if current and baseline_text is not None:
         entries = [
             _append(project_dir, [], baseline_text, current.version, BASELINE_DESCRIPTION, "import")
         ]
+        _write_index(project_dir, entries)
     entry = _append(project_dir, entries, text, version, description, source)
     write_atomic(scene_path, text.encode())
     _write_index(project_dir, [*entries, entry])
     return entry
+
+
+def _apply_to_existing(
+    change: Callable[[Scene], Scene | None],
+) -> Callable[[Scene | None], Scene | None]:
+    """Adapt a change of an existing scene for `_commit_sync`; a missing scene.json is an error."""
+
+    def run(current: Scene | None) -> Scene | None:
+        if current is None:
+            raise FileNotFoundError("scene.json")
+        return change(current)
+
+    return run
 
 
 class History:
@@ -126,9 +150,11 @@ class History:
         """
         project_dir = self._store.require(slug)
         async with self._lock(slug):
-            return await asyncio.to_thread(
-                _commit_sync, project_dir, new_scene, description, source
+            entry = await asyncio.to_thread(
+                _commit_sync, project_dir, lambda _current: new_scene, description, source
             )
+        assert entry is not None
+        return entry
 
     async def apply(
         self,
@@ -138,14 +164,14 @@ class History:
         source: ChangeSource,
     ) -> ChangeSetMeta | None:
         """Read-modify-write under the project lock: `change` gets the current scene and returns
-        the new one, or None for "nothing to do" (then nothing is committed)."""
+        the new one, or None for "nothing to do" (then nothing is committed).
+
+        Loading, `change` and writing all run in a worker thread, and the scene is parsed once.
+        """
         project_dir = self._store.require(slug)
         async with self._lock(slug):
-            new_scene = change(load_scene(project_dir / "scene.json"))
-            if new_scene is None:
-                return None
             return await asyncio.to_thread(
-                _commit_sync, project_dir, new_scene, description, source
+                _commit_sync, project_dir, _apply_to_existing(change), description, source
             )
 
     async def restore(self, slug: str, seq: int) -> ChangeSetMeta:
