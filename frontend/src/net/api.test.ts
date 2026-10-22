@@ -25,4 +25,12 @@ describe('fetchHealth', () => {
     };
     expect(await fetchHealth(failing)).toBe('down');
   });
+
+  it('returns down when the backend never answers', async () => {
+    const hanging: typeof fetch = (_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+      });
+    expect(await fetchHealth(hanging, 10)).toBe('down');
+  });
 });

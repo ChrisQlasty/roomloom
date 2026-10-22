@@ -2,11 +2,24 @@ import * as THREE from 'three';
 import { fetchHealth } from './net/api';
 
 const HEALTH_POLL_MS = 5000;
+/** Higher ratios cost fill rate with little visible gain (performance budget, AGENTS.md rule 9). */
+const MAX_PIXEL_RATIO = 2;
+
+/** Call `onChange` whenever devicePixelRatio changes, e.g. when the window moves to another monitor. */
+function watchPixelRatio(onChange: () => void): void {
+  const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  query.addEventListener(
+    'change',
+    () => {
+      onChange();
+      watchPixelRatio(onChange);
+    },
+    { once: true },
+  );
+}
 
 function startScene(): void {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -26,11 +39,15 @@ function startScene(): void {
   );
   scene.add(box);
 
-  window.addEventListener('resize', () => {
+  const fitToWindow = (): void => {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+    renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  };
+  fitToWindow();
+  window.addEventListener('resize', fitToWindow);
+  watchPixelRatio(fitToWindow);
 
   const timer = new THREE.Timer();
   timer.connect(document);
@@ -43,15 +60,14 @@ function startScene(): void {
   });
 }
 
+/** Update the badge, then schedule the next poll, so requests never overlap. */
 async function pollHealth(el: HTMLElement): Promise<void> {
   const state = await fetchHealth();
   el.textContent = `backend: ${state}`;
   el.dataset.state = state;
+  setTimeout(() => void pollHealth(el), HEALTH_POLL_MS);
 }
 
 startScene();
 const healthEl = document.getElementById('health');
-if (healthEl) {
-  void pollHealth(healthEl);
-  setInterval(() => void pollHealth(healthEl), HEALTH_POLL_MS);
-}
+if (healthEl) void pollHealth(healthEl);
