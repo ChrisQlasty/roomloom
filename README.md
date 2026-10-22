@@ -33,14 +33,14 @@ No API keys are needed yet.
    ```sh
    make dev
    ```
-   This installs the Python and npm dependencies on the first run (about a minute), then starts:
+   This installs the Python and npm dependencies on the first run (about a minute), and again only when a lockfile changes. Then it starts:
    - the backend (FastAPI) on http://localhost:8000
    - the frontend (Vite) on http://localhost:5173, which forwards `/api` requests to the backend
 4. **Open http://localhost:5173 in your browser.** You should see:
    - a dark grey page filling the window
    - a sand-coloured cube slowly rotating in the centre
    - a small badge in the top-right corner reading **`backend: ok`** in green
-5. **Stop everything** with `Ctrl-C` in the terminal running `make dev`. Both servers stop. The final `make: *** [dev] Error 130` line is expected and harmless.
+5. **Stop everything** with `Ctrl-C` in the terminal running `make dev`. Both servers stop. If one server exits on its own (a crash, or a port already in use), `make dev` stops the other one as well. The final `make: *** [dev] Error` line is expected and harmless.
 
 ### Optional checks
 
@@ -49,7 +49,7 @@ No API keys are needed yet.
 - **The badge reacts to the backend:** stop only the backend, and within 5 seconds the badge turns red and reads `backend: down`. It turns green again once the backend is back. To try this, run the two servers in separate terminals:
   ```sh
   # terminal 1
-  cd backend && uv run uvicorn app.main:app --reload --port 8000
+  cd backend && uv run uvicorn --factory app.main:create_app --reload --port 8000
   # terminal 2
   cd frontend && npm run dev
   ```
