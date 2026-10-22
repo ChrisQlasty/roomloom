@@ -688,7 +688,8 @@
   "notes": [
     {
       "id": "note_fixture",
-      "text": "Example building used as the shared test fixture; not a real place."
+      "text": "Example building used as the shared test fixture; not a real place.",
+      "room_ids": []
     }
   ],
   "assets": {

@@ -43,6 +43,10 @@ def is_valid_slug(slug: str) -> bool:
     return _SLUG_RE.fullmatch(slug) is not None
 
 
+def _write_project(folder: Path, project: Project) -> None:
+    write_atomic(folder / "project.json", (project.model_dump_json(indent=2) + "\n").encode())
+
+
 def _as_utc(ts: datetime) -> datetime:
     """`ts` with a time zone; naive times are UTC by convention (see `Project.created_at`)."""
     return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
@@ -118,21 +122,37 @@ class ProjectStore:
     async def create(self, project: Project, scene: Scene) -> ChangeSetMeta:
         """Write a new project and commit its scene as change set 1, "Imported".
 
-        Raises `ProjectExists` if the folder exists. On failure nothing is left behind.
+        Raises `ProjectExists` if the folder already holds a project.json. A folder without
+        one (e.g. only the importer's `import/` files) is reused. On failure nothing this call
+        wrote is left behind.
         """
         folder = self.root / project.slug
+        if (folder / "project.json").exists():
+            raise ProjectExists(project.slug)
+        existed = folder.is_dir()
+        folder.mkdir(parents=True, exist_ok=True)
         try:
-            folder.mkdir(parents=True)
-        except FileExistsError as e:
-            raise ProjectExists(project.slug) from e
-        try:
-            write_atomic(
-                folder / "project.json", (project.model_dump_json(indent=2) + "\n").encode()
-            )
+            _write_project(folder, project)
             return await self.history.commit(project.slug, scene, BASELINE_DESCRIPTION, "import")
         except BaseException:
-            shutil.rmtree(folder)
+            if existed:
+                for name in ("project.json", "scene.json"):
+                    (folder / name).unlink(missing_ok=True)
+                shutil.rmtree(folder / "history", ignore_errors=True)
+            else:
+                shutil.rmtree(folder)
             raise
+
+    async def reimport(self, project: Project, scene: Scene, description: str) -> ChangeSetMeta:
+        """Replace an existing project's scene with a fresh import, as a new change set.
+
+        Earlier change sets stay in the history, so the previous shell can still be restored.
+        project.json is rewritten only after the scene committed.
+        """
+        self.require(project.slug)
+        meta = await self.history.commit(project.slug, scene, description, "import")
+        _write_project(self.root / project.slug, project)
+        return meta
 
     def thumbnail_path(self, slug: str) -> Path:
         """Where the project-picker image lives (it may not exist yet)."""

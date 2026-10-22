@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_image_model: str = "gemini-2.5-flash-image"
     miro_token: str = ""
+    miro_board_id: str = ""
     elevenlabs_api_key: str = ""
     monthly_budget_usd: float = 30.0
     projects_dir: Path = REPO_ROOT / "projects"

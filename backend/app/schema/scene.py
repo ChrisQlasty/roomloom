@@ -9,6 +9,7 @@ from app.schema.common import (
     AssetRef,
     MaterialRef,
     PositiveFloat,
+    RoomId,
     SchemaModel,
     Vec3,
 )
@@ -85,6 +86,9 @@ class Note(SchemaModel):
         description="Note id, prefix 'note_'."
     )
     text: str = Field(min_length=1, description="Note text.")
+    room_ids: list[RoomId] = Field(
+        default_factory=list, description="Rooms the note is about, e.g. rooms it mentions."
+    )
 
 
 class AssetMeta(SchemaModel):

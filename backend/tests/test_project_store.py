@@ -109,6 +109,45 @@ def test_create_with_invalid_scene_leaves_nothing(store: ProjectStore, projects_
     assert not (projects_root / "new-house").exists()
 
 
+def test_create_reuses_a_folder_without_project_json(
+    store: ProjectStore, projects_root: Path
+) -> None:
+    raw = projects_root / "new-house" / "import" / "miro_raw.json"
+    raw.parent.mkdir(parents=True)
+    raw.write_text("{}")
+    entry = asyncio.run(store.create(new_project(), store.load_scene(SLUG)))
+    assert entry.seq == 1 and raw.read_text() == "{}"
+    assert store.get("new-house").name == "New house"
+
+
+def test_failed_create_in_existing_folder_keeps_other_files(
+    store: ProjectStore, projects_root: Path
+) -> None:
+    raw = projects_root / "new-house" / "import" / "miro_raw.json"
+    raw.parent.mkdir(parents=True)
+    raw.write_text("{}")
+    bad = store.load_scene(SLUG)
+    bad.shell.rooms[0].ceiling_height = 1.0
+    with pytest.raises(ValidationError):
+        asyncio.run(store.create(new_project(), bad))
+    assert sorted(p.name for p in (projects_root / "new-house").iterdir()) == ["import"]
+
+
+def test_reimport_adds_a_change_set_and_keeps_history(store: ProjectStore) -> None:
+    scene = store.load_scene(SLUG)
+    scene.notes = []
+    renamed = store.get(SLUG).model_copy(update={"name": "Renamed"})
+    entry = asyncio.run(store.reimport(renamed, scene, "Re-imported from Miro"))
+    assert [e.description for e in store.history.list(SLUG)] == ["Imported", entry.description]
+    assert entry.source == "import"
+    assert store.load_scene(SLUG).notes == [] and store.get(SLUG).name == "Renamed"
+
+
+def test_reimport_requires_an_existing_project(store: ProjectStore) -> None:
+    with pytest.raises(ProjectNotFound):
+        asyncio.run(store.reimport(new_project(), store.load_scene(SLUG), "Re-imported"))
+
+
 def test_thumbnail_is_stored_as_small_jpeg(store: ProjectStore) -> None:
     store.save_thumbnail(SLUG, jpeg((1280, 720), gps=True))
     img = open_bytes(store.thumbnail_path(SLUG).read_bytes())

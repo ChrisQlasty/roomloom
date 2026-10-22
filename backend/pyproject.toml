@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2",
     "pydantic-settings",
     "python-multipart>=0.0.32",
+    "pyyaml>=6.0.3",
     "shapely",
     "uvicorn[standard]",
 ]
@@ -21,6 +22,7 @@ dependencies = [
 dev = [
     "pytest",
     "ruff",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [tool.uv]
