@@ -91,30 +91,34 @@ async def upload_asset(slug: str, file: UploadFile, store: Store) -> UploadedAss
     assets = store.assets(slug)
     data = await _read_upload(file)
     meta = await asyncio.to_thread(assets.add_photo, data, file.filename)
-    added: list[str] = []
+    added: list[tuple[str, AssetMeta]] = []
 
     def add(scene: Scene) -> Scene | None:
         existing = find_by_sha(scene, meta.sha256)
         if existing:
-            added.append(existing)
+            added.append((existing, scene.assets[existing]))
             return None
         new_scene, asset_id = with_asset(scene, meta)
-        added.append(asset_id)
+        added.append((asset_id, meta))
         return new_scene
 
     change = await store.history.apply(
         slug, add, f"Upload photo {meta.original_name or ''}".strip(), "user"
     )
-    return UploadedAsset(id=added[0], asset=meta, created=change is not None)
+    asset_id, stored = added[0]
+    return UploadedAsset(id=asset_id, asset=stored, created=change is not None)
 
 
 @router.get("/{slug}/assets/{asset_id}")
 def get_asset(slug: str, asset_id: str, store: Store, thumb: bool = False) -> FileResponse:
     """An asset file, or its JPEG thumbnail with `?thumb=1`."""
-    meta = store.load_scene(slug).assets.get(asset_id)
+    meta = store.asset(slug, asset_id)
+    assets = store.assets(slug)
     if meta is None:
         raise HTTPException(404, f"No asset {asset_id}")
-    return FileResponse(store.assets(slug).path_for(meta, thumb=thumb))
+    if not assets.path_for(meta).is_file():
+        raise HTTPException(404, f"File of asset {asset_id} is missing")
+    return FileResponse(assets.path_for(meta, thumb=thumb))
 
 
 @router.post("/{slug}/thumbnail", status_code=204)

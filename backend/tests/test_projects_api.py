@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import httpx
@@ -55,6 +56,7 @@ def test_upload_adds_asset_via_a_user_change_set_and_dedupes(client: TestClient)
     ]
     again = upload(client, jpeg(gps=True), "copy.jpg").json()
     assert again["id"] == "ast_old_hall" and again["created"] is False
+    assert again["asset"] == body["asset"]  # the stored entry, not one named copy.jpg
     assert len(client.get(BASE + "/history").json()) == 2
 
 
@@ -67,6 +69,15 @@ def test_get_asset_and_thumbnail(client: TestClient) -> None:
     thumb = client.get(f"{BASE}/assets/{asset_id}", params={"thumb": 1})
     assert open_bytes(thumb.content).size == (320, 160)
     assert client.get(f"{BASE}/assets/ast_nope").status_code == 404
+
+
+@pytest.mark.parametrize("thumb", [0, 1])
+def test_asset_with_missing_file_is_404(
+    client: TestClient, projects_root: Path, thumb: int
+) -> None:
+    shutil.rmtree(projects_root / "example-l-house" / "assets")
+    response = client.get(f"{BASE}/assets/ast_entrance_hall_photo", params={"thumb": thumb})
+    assert response.status_code == 404
 
 
 def test_bad_uploads(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
