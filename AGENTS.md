@@ -43,6 +43,10 @@ plan/                   architecture, conventions, limitations, tasks
 - Linting is automatic: a Claude Code PostToolUse hook (`.claude/hooks/lint-edited.sh`) runs ruff on edited backend `.py` files and prettier/eslint/tsc on edited frontend files, and reports problems back. Edit files with the Write/Edit tools so the hook runs; no manual lint step.
 - `make types`: regenerate `shared/*.json` and `frontend/src/types/scene.ts` from Pydantic.
 
+## Local setup and workflow
+- **Never use git worktrees** (no `EnterWorktree`, no `git worktree add`). Work in the main checkout on a feature branch. `plan/` is git-ignored, so it exists only there. `.claude/settings.json` sets `"worktree": {"bgIsolation": "none"}` so background sessions don't force worktrees either.
+- `.env` already holds `MIRO_TOKEN` and `MIRO_BOARD_ID` for the user's real Miro board. Use them for manual checks against the live board (e.g. the importer in T04). Tests stay offline and mock Miro. Never print, log or commit their values.
+
 ## Golden rules
 1. **Schema first.** Change Pydantic models in `backend/app/schema/`, then run `make types`. Never hand-edit generated files.
 2. **Generic, not school-specific.** No domain words ("classroom", "blackboard" as a concept) in code logic. Domain flavour lives in each project's `profile_prompt`, in tags, and in prefab names that are generic (e.g. `wall_board`, not `blackboard`).
