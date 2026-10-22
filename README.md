@@ -5,7 +5,9 @@ Use `RoomLoom` as the display name and `roomloom` for packages, folders and iden
 
 ## Current state
 
-Only the repo scaffold (task T01) exists so far. Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
+The repo scaffold (task T01) and the scene schema (task T02) exist so far. Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
+
+The scene document format is defined by the Pydantic models in `backend/app/schema/`. A hand-made example project, `projects/example-l-house/`, holds an L-shaped building with five rooms, a sunken gym reached by two steps, a flat roof, three objects and one photo pin. Tests use it as their fixture.
 
 ## Prerequisites
 
@@ -64,6 +66,29 @@ make lint   # ruff, tsc, eslint and prettier --check
 
 Both should finish without errors. When Claude Code edits files, a hook (`.claude/hooks/lint-edited.sh`) formats and lints each edited file automatically.
 
+## Regenerate the shared types
+
+The Pydantic models in `backend/app/schema/` are the single source of truth for the scene format. After changing them, run:
+
+```sh
+make types
+```
+
+This rewrites three generated files (never edit them by hand):
+- `shared/scene.schema.json`: the JSON Schema of a scene
+- `shared/ops.schema.json`: a placeholder until the ops engine exists
+- `frontend/src/types/scene.ts`: TypeScript types, generated from the schema with `json-schema-to-typescript`
+
+Running it twice gives no diff. `make test` fails if the shared schemas are out of date.
+
+## Scene conventions
+
+- Units are metres, and Y is up. A Miro plan point `(x, y)` maps to the world point `(x, 0, y)`. North is −Z, the top of the board.
+- Polygons are stored counter-clockwise **as seen from above** (as drawn on the board), without repeating the first point. Wall sides "left" and "right" are as seen from above when walking from `a` to `b`.
+- An opening's `sill` and `height` are measured from the higher floor of the two rooms beside its wall.
+- A primitive's local origin is its bottom centre, and its front faces local −Z (north at yaw 0).
+- Coordinates are rounded to millimetres. `scene.json` is written atomically, with a stable key order.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -79,8 +104,8 @@ Both should finish without errors. When Claude Code edits files, a hook (`.claud
 ```
 backend/    FastAPI app (Python 3.12, uv)
 frontend/   Vite + TypeScript + three.js
-shared/     generated schema files (from task T02 onwards)
-projects/   per-project data (git-ignored, except projects/example-*)
+shared/     generated schema files (make types)
+projects/   per-project data (git-ignored, except projects/example-*, e.g. example-l-house)
 data/       global data such as costs and feature requests (git-ignored)
 Makefile    dev, test, lint, types
 ```

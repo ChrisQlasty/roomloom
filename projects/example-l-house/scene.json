@@ -1,0 +1,704 @@
+{
+  "schema_version": 1,
+  "version": 1,
+  "shell": {
+    "outline": [
+      [0.0, 0.0],
+      [0.0, 20.0],
+      [12.0, 20.0],
+      [12.0, 10.0],
+      [30.0, 10.0],
+      [30.0, 0.0]
+    ],
+    "default_ceiling_height": 2.6,
+    "wall_thickness": {
+      "exterior": 0.3,
+      "interior": 0.12
+    },
+    "facade_material": "mat_facade_default",
+    "rooms": [
+      {
+        "id": "r_entrance_hall",
+        "name": "Entrance hall",
+        "tags": [
+          "entrance"
+        ],
+        "polygon": [
+          [0.0, 0.0],
+          [0.0, 20.0],
+          [4.0, 20.0],
+          [4.0, 10.0],
+          [12.0, 10.0],
+          [12.0, 0.0]
+        ],
+        "floor_level": 0.0,
+        "ceiling_height": 3.0,
+        "notes": [
+          "Made of two rectangles: the hall and the strip along the gym"
+        ],
+        "surfaces": {
+          "floor": "mat_floor_default",
+          "ceiling": "mat_ceiling_default",
+          "walls": "mat_wall_default"
+        }
+      },
+      {
+        "id": "r_room_1",
+        "name": "Room 1",
+        "tags": [
+          "classroom"
+        ],
+        "polygon": [
+          [12.0, 0.0],
+          [12.0, 7.0],
+          [21.0, 7.0],
+          [21.0, 0.0]
+        ],
+        "floor_level": 0.0,
+        "ceiling_height": 3.0,
+        "notes": [
+          "Wall board on the north wall"
+        ],
+        "surfaces": {
+          "floor": "mat_floor_default",
+          "ceiling": "mat_ceiling_default",
+          "walls": "mat_wall_default"
+        }
+      },
+      {
+        "id": "r_room_2",
+        "name": "Room 2",
+        "tags": [
+          "classroom"
+        ],
+        "polygon": [
+          [21.0, 0.0],
+          [21.0, 7.0],
+          [30.0, 7.0],
+          [30.0, 0.0]
+        ],
+        "floor_level": 0.0,
+        "ceiling_height": 3.0,
+        "notes": [],
+        "surfaces": {
+          "floor": "mat_floor_default",
+          "ceiling": "mat_ceiling_default",
+          "walls": "mat_wall_default"
+        }
+      },
+      {
+        "id": "r_corridor",
+        "name": "Corridor",
+        "tags": [
+          "corridor"
+        ],
+        "polygon": [
+          [12.0, 7.0],
+          [12.0, 10.0],
+          [30.0, 10.0],
+          [30.0, 7.0]
+        ],
+        "floor_level": 0.0,
+        "ceiling_height": 2.6,
+        "notes": [],
+        "surfaces": {
+          "floor": "mat_floor_default",
+          "ceiling": "mat_ceiling_default",
+          "walls": "mat_wall_default"
+        }
+      },
+      {
+        "id": "r_gym",
+        "name": "Gym",
+        "tags": [
+          "sport"
+        ],
+        "polygon": [
+          [4.0, 10.0],
+          [4.0, 20.0],
+          [12.0, 20.0],
+          [12.0, 10.0]
+        ],
+        "floor_level": -0.34,
+        "ceiling_height": 3.6,
+        "notes": [],
+        "surfaces": {
+          "floor": "mat_gym_floor",
+          "ceiling": "mat_ceiling_default",
+          "walls": "mat_wall_default"
+        }
+      }
+    ],
+    "walls": [
+      {
+        "id": "w_hall_west",
+        "a": [0.0, 0.0],
+        "b": [0.0, 20.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_entrance_hall",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_hall_west_window",
+            "kind": "window",
+            "offset": 2.5,
+            "width": 1.8,
+            "height": 1.5,
+            "sill": 0.9
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_hall_south",
+        "a": [0.0, 20.0],
+        "b": [4.0, 20.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_entrance_hall",
+        "right_room_id": null,
+        "openings": [],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_gym_south",
+        "a": [4.0, 20.0],
+        "b": [12.0, 20.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_gym",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_gym_window_1",
+            "kind": "window",
+            "offset": 1.0,
+            "width": 2.5,
+            "height": 1.2,
+            "sill": 1.8
+          },
+          {
+            "id": "op_gym_window_2",
+            "kind": "window",
+            "offset": 4.5,
+            "width": 2.5,
+            "height": 1.2,
+            "sill": 1.8
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_gym_east",
+        "a": [12.0, 20.0],
+        "b": [12.0, 10.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_gym",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_gym_window_3",
+            "kind": "window",
+            "offset": 3.0,
+            "width": 2.5,
+            "height": 1.2,
+            "sill": 1.8
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_corridor_south",
+        "a": [12.0, 10.0],
+        "b": [30.0, 10.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_corridor",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_corridor_window",
+            "kind": "window",
+            "offset": 8.0,
+            "width": 1.5,
+            "height": 1.2,
+            "sill": 1.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_corridor_east",
+        "a": [30.0, 10.0],
+        "b": [30.0, 7.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_corridor",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_side_door",
+            "kind": "door",
+            "offset": 0.9,
+            "width": 1.0,
+            "height": 2.1,
+            "sill": 0.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_room_2_east",
+        "a": [30.0, 7.0],
+        "b": [30.0, 0.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_room_2",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_room_2_east_window",
+            "kind": "window",
+            "offset": 2.5,
+            "width": 2.0,
+            "height": 1.5,
+            "sill": 0.9
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_room_2_north",
+        "a": [30.0, 0.0],
+        "b": [21.0, 0.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_room_2",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_room_2_window_1",
+            "kind": "window",
+            "offset": 1.5,
+            "width": 2.0,
+            "height": 1.6,
+            "sill": 0.9
+          },
+          {
+            "id": "op_room_2_window_2",
+            "kind": "window",
+            "offset": 5.5,
+            "width": 2.0,
+            "height": 1.6,
+            "sill": 0.9
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_room_1_north",
+        "a": [21.0, 0.0],
+        "b": [12.0, 0.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_room_1",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_room_1_window_1",
+            "kind": "window",
+            "offset": 1.5,
+            "width": 2.0,
+            "height": 1.6,
+            "sill": 0.9
+          },
+          {
+            "id": "op_room_1_window_2",
+            "kind": "window",
+            "offset": 5.5,
+            "width": 2.0,
+            "height": 1.6,
+            "sill": 0.9
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_hall_north",
+        "a": [12.0, 0.0],
+        "b": [0.0, 0.0],
+        "thickness": 0.3,
+        "kind": "exterior",
+        "left_room_id": "r_entrance_hall",
+        "right_room_id": null,
+        "openings": [
+          {
+            "id": "op_main_entrance",
+            "kind": "door",
+            "offset": 5.1,
+            "width": 1.8,
+            "height": 2.3,
+            "sill": 0.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_hall_room_1",
+        "a": [12.0, 0.0],
+        "b": [12.0, 7.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_room_1",
+        "right_room_id": "r_entrance_hall",
+        "openings": [],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_hall_corridor",
+        "a": [12.0, 7.0],
+        "b": [12.0, 10.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_corridor",
+        "right_room_id": "r_entrance_hall",
+        "openings": [
+          {
+            "id": "op_corridor_passage",
+            "kind": "passage",
+            "offset": 0.5,
+            "width": 2.0,
+            "height": 2.4,
+            "sill": 0.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_room_1_room_2",
+        "a": [21.0, 0.0],
+        "b": [21.0, 7.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_room_2",
+        "right_room_id": "r_room_1",
+        "openings": [],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_room_1_corridor",
+        "a": [12.0, 7.0],
+        "b": [21.0, 7.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_room_1",
+        "right_room_id": "r_corridor",
+        "openings": [
+          {
+            "id": "op_room_1_door",
+            "kind": "door",
+            "offset": 7.5,
+            "width": 1.0,
+            "height": 2.1,
+            "sill": 0.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_room_2_corridor",
+        "a": [21.0, 7.0],
+        "b": [30.0, 7.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_room_2",
+        "right_room_id": "r_corridor",
+        "openings": [
+          {
+            "id": "op_room_2_door",
+            "kind": "door",
+            "offset": 0.5,
+            "width": 1.0,
+            "height": 2.1,
+            "sill": 0.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_hall_gym_north",
+        "a": [4.0, 10.0],
+        "b": [12.0, 10.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_entrance_hall",
+        "right_room_id": "r_gym",
+        "openings": [
+          {
+            "id": "op_gym_door",
+            "kind": "door",
+            "offset": 3.0,
+            "width": 1.6,
+            "height": 2.2,
+            "sill": 0.0
+          }
+        ],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      },
+      {
+        "id": "w_hall_gym_west",
+        "a": [4.0, 10.0],
+        "b": [4.0, 20.0],
+        "thickness": 0.12,
+        "kind": "interior",
+        "left_room_id": "r_gym",
+        "right_room_id": "r_entrance_hall",
+        "openings": [],
+        "face_overrides": {
+          "left": null,
+          "right": null
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "id": "tr_gym_steps",
+        "opening_id": "op_gym_door",
+        "steps": 2,
+        "rise_total": 0.34,
+        "host_room_id": "r_gym"
+      }
+    ]
+  },
+  "roof": {
+    "type": "flat",
+    "pitch_deg": 0.0,
+    "overhang": 0.3,
+    "base_offset": 0.3,
+    "slope_direction_deg": null,
+    "gable_edges": null,
+    "material": "mat_roof_default",
+    "fascia_material": null
+  },
+  "materials": {
+    "mat_ceiling_default": {
+      "name": "Ceiling",
+      "color": "#f4f2ec",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.95,
+      "metalness": 0.0,
+      "source": "default"
+    },
+    "mat_column": {
+      "name": "Column",
+      "color": "#d8d2c4",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.8,
+      "metalness": 0.0,
+      "source": "user"
+    },
+    "mat_facade_default": {
+      "name": "Facade",
+      "color": "#c9b79c",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.9,
+      "metalness": 0.0,
+      "source": "default"
+    },
+    "mat_floor_default": {
+      "name": "Floor",
+      "color": "#b5a58a",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.8,
+      "metalness": 0.0,
+      "source": "default"
+    },
+    "mat_gym_floor": {
+      "name": "Gym floor",
+      "color": "#c08a4e",
+      "texture_asset": null,
+      "tile_size_m": [2.0, 0.5],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "source": "user"
+    },
+    "mat_roof_default": {
+      "name": "Roof",
+      "color": "#5a5a5a",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.9,
+      "metalness": 0.0,
+      "source": "default"
+    },
+    "mat_wall_board": {
+      "name": "Wall board",
+      "color": "#2f4a3a",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.7,
+      "metalness": 0.0,
+      "source": "user"
+    },
+    "mat_wall_default": {
+      "name": "Wall",
+      "color": "#e8e2d4",
+      "texture_asset": null,
+      "tile_size_m": [1.0, 1.0],
+      "roughness": 0.9,
+      "metalness": 0.0,
+      "source": "default"
+    }
+  },
+  "objects": [
+    {
+      "id": "obj_wall_board",
+      "name": "Wall board",
+      "room_id": "r_room_1",
+      "tags": [
+        "wall_board"
+      ],
+      "geometry": {
+        "type": "panel",
+        "width": 3.0,
+        "height": 1.2
+      },
+      "transform": {
+        "position": [16.5, 0.9, 0.2],
+        "rotation_deg": [0.0, 180.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "materials": {
+        "main": "mat_wall_board"
+      },
+      "created_by": "user"
+    },
+    {
+      "id": "obj_column",
+      "name": "Column",
+      "room_id": "r_entrance_hall",
+      "tags": [
+        "column"
+      ],
+      "geometry": {
+        "type": "cylinder",
+        "radius": 0.25,
+        "height": 3.0
+      },
+      "transform": {
+        "position": [9.0, 0.0, 5.0],
+        "rotation_deg": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "materials": {
+        "main": "mat_column"
+      },
+      "created_by": "user"
+    },
+    {
+      "id": "obj_bench",
+      "name": "Bench",
+      "room_id": "r_gym",
+      "tags": [
+        "bench"
+      ],
+      "geometry": {
+        "type": "box",
+        "size": [3.0, 0.45, 0.35]
+      },
+      "transform": {
+        "position": [8.0, -0.34, 19.5],
+        "rotation_deg": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "materials": {
+        "main": "mat_gym_floor"
+      },
+      "created_by": "user"
+    }
+  ],
+  "pins": [
+    {
+      "id": "pin_entrance_hall",
+      "asset_id": "ast_entrance_hall_photo",
+      "position": [6.0, 1.5, 7.0],
+      "yaw_deg": 0.0,
+      "pitch_deg": -3.0,
+      "fov_deg": 60.0,
+      "caption": "Entrance hall, looking towards the main door",
+      "author": "Unknown",
+      "year": 1985,
+      "placed": true
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_fixture",
+      "text": "Example building used as the shared test fixture; not a real place."
+    }
+  ],
+  "assets": {
+    "ast_entrance_hall_photo": {
+      "kind": "photo",
+      "path": "assets/521d61d7f8a0f229a4c4b3d3668cdd8b950c56ecd45bcb4feaa38a662ad07c6e.jpg",
+      "sha256": "521d61d7f8a0f229a4c4b3d3668cdd8b950c56ecd45bcb4feaa38a662ad07c6e",
+      "w": 640,
+      "h": 480,
+      "original_name": "entrance-hall-1985.jpg"
+    }
+  }
+}

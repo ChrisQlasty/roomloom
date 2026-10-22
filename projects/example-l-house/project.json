@@ -1,0 +1,17 @@
+{
+  "id": "example-l-house",
+  "slug": "example-l-house",
+  "name": "Example L-house",
+  "description": "Irregular L-shaped single-storey building used as the shared test fixture.",
+  "profile_prompt": "A generic single-storey school building from the 1980s, used for development and tests.",
+  "language": "en",
+  "created_at": "2026-10-22T00:00:00Z",
+  "spawn": {
+    "position": [
+      6.0,
+      0.0,
+      2.0
+    ],
+    "yaw_deg": 180.0
+  }
+}
