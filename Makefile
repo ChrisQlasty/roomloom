@@ -28,5 +28,11 @@ lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
 	cd frontend && npm run lint
 
-types:
-	@echo "TODO: generate shared/*.json and frontend/src/types/scene.ts (T02)"
+# Pydantic is the source of truth: write shared/*.schema.json, then the TS types from them.
+# --ignoreMinAndMaxItems keeps minItems arrays as plain T[]; tuples get exact types via `tsType` hints.
+types: install
+	cd backend && uv run python -m app.schema.export ../shared
+	cd frontend && npx --no-install json2ts --ignoreMinAndMaxItems \
+		--bannerComment "/* GENERATED — do not edit. Source: backend/app/schema; run make types. */" \
+		-i ../shared/scene.schema.json -o src/types/scene.ts
+	cd frontend && npx --no-install prettier --write --log-level warn src/types/scene.ts
