@@ -58,5 +58,5 @@ def test_no_number_has_more_than_three_decimals() -> None:
             return [n for v in node for n in numbers(v)]
         return []
 
-    data = json.loads((EXAMPLE_PROJECT / "scene.json").read_text())
+    data = json.loads((EXAMPLE_PROJECT / "scene.json").read_text(encoding="utf-8"))
     assert all(round(n, 3) == n for n in numbers(data))

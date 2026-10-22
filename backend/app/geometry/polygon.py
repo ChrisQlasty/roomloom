@@ -44,11 +44,8 @@ def validate_simple_ring(points: Sequence[Point]) -> list[Point]:
     ring = open_ring(points)
     if len(ring) < 3:
         raise ValueError("a polygon needs at least 3 distinct points")
-    shape = ShapelyPolygon(ring)
-    if not shape.is_valid or not shape.exterior.is_simple:
-        raise ValueError("polygon is self-intersecting")
-    if shape.area <= 0:
-        raise ValueError("polygon has zero area")
+    if not ShapelyPolygon(ring).is_valid:  # also rejects zero-area (collinear) rings
+        raise ValueError("polygon is self-intersecting or has zero area")
     return ring
 
 
@@ -56,3 +53,14 @@ def normalise_polygon(points: Sequence[Point]) -> list[Point]:
     """Validate a simple ring and orient it counter-clockwise as seen from above."""
     ring = validate_simple_ring(points)
     return ring if is_ccw_from_above(ring) else ring[::-1]
+
+
+def require_ccw_polygon(points: Sequence[Point]) -> list[Point]:
+    """Validate a simple ring that must already wind counter-clockwise as seen from above.
+
+    For polygons whose edges are referenced by index, where reversing would renumber them.
+    """
+    ring = validate_simple_ring(points)
+    if not is_ccw_from_above(ring):
+        raise ValueError("polygon must wind counter-clockwise as seen from above (north up)")
+    return ring

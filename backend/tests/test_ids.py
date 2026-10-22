@@ -8,6 +8,13 @@ def test_slugify() -> None:
     assert slugify("  Hall -- (east) ") == "hall_east"
 
 
+def test_slugify_transliterates_latin_letters() -> None:
+    assert slugify("Źródło") == "zrodlo"
+    assert slugify("Łazienka") == "lazienka"
+    assert slugify("Größe Æble Ø") == "grosse_aeble_o"
+    assert new_id("room", set(), "Sala gimnastyczna ŻÓŁTA") == "r_sala_gimnastyczna_zolta"
+
+
 def test_new_id_readable_then_suffixed() -> None:
     assert new_id("room", set(), "Room 3A") == "r_room_3a"
     assert new_id("room", {"r_room_3a"}, "Room 3A") == "r_room_3a_2"

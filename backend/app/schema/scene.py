@@ -35,7 +35,11 @@ class Roof(SchemaModel):
         description="Shed roofs: downhill direction in degrees, 0 north, clockwise.",
     )
     gable_edges: list[int] | None = Field(
-        None, description="Gable roofs: indices of outline edges that become gable ends."
+        None,
+        description=(
+            "Gable roofs: indices of shell.outline edges that become gable ends "
+            "(edge i runs from point i to point i+1)."
+        ),
     )
     material: MaterialRef = Field("mat_roof_default", description="Roof covering material.")
     fascia_material: MaterialRef | None = Field(None, description="Optional fascia material.")

@@ -13,7 +13,7 @@ from tests.paths import EXAMPLE_PROJECT
 @pytest.fixture
 def example_scene_dict() -> dict[str, Any]:
     """A fresh, mutable copy of the example scene as plain JSON data."""
-    return json.loads((EXAMPLE_PROJECT / "scene.json").read_text())
+    return json.loads((EXAMPLE_PROJECT / "scene.json").read_text(encoding="utf-8"))
 
 
 @pytest.fixture(autouse=True)

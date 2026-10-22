@@ -50,8 +50,8 @@ def to_json(schema: dict[str, Any]) -> str:
 
 def write_schemas(out_dir: Path) -> None:
     """Write scene.schema.json and ops.schema.json into `out_dir`."""
-    (out_dir / "scene.schema.json").write_text(to_json(scene_schema()))
-    (out_dir / "ops.schema.json").write_text(to_json(ops_schema()))
+    (out_dir / "scene.schema.json").write_text(to_json(scene_schema()), encoding="utf-8")
+    (out_dir / "ops.schema.json").write_text(to_json(ops_schema()), encoding="utf-8")
 
 
 if __name__ == "__main__":

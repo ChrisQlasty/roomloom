@@ -670,7 +670,7 @@
             }
           ],
           "default": null,
-          "description": "Gable roofs: indices of outline edges that become gable ends."
+          "description": "Gable roofs: indices of shell.outline edges that become gable ends (edge i runs from point i to point i+1)."
         },
         "material": {
           "default": "mat_roof_default",
@@ -907,7 +907,7 @@
       "description": "The locked building shell. Only room metadata and ceiling heights may change after import.",
       "properties": {
         "outline": {
-          "description": "Building footprint: the union of all rooms.",
+          "description": "Building footprint: the union of all rooms. Roof gable_edges index its edges.",
           "items": {
             "description": "Plan point [x, y] in metres.",
             "maxItems": 2,

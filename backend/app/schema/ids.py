@@ -1,6 +1,7 @@
 """Readable, prefixed entity ids such as `r_room_3a`, `w_12` or `mat_oak_floor`."""
 
 import re
+import unicodedata
 from collections.abc import Collection
 from typing import Literal
 
@@ -28,9 +29,16 @@ def id_pattern(kind: IdKind) -> str:
     return f"^{PREFIXES[kind]}{_BODY}$"
 
 
+# Latin letters that Unicode does not decompose into a base letter plus accent.
+_LATIN_EXTRAS = str.maketrans({"ł": "l", "ø": "o", "đ": "d", "æ": "ae", "œ": "oe", "þ": "th"})
+
+
 def slugify(text: str) -> str:
-    """Lowercase `text` and collapse every run of non-alphanumerics into one underscore."""
-    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+    """Transliterate Latin letters to ASCII (`Źródło` gives `zrodlo`), lowercase `text` and
+    collapse every run of other characters into one underscore."""
+    folded = text.casefold().translate(_LATIN_EXTRAS)
+    ascii_text = unicodedata.normalize("NFKD", folded).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "_", ascii_text).strip("_")
 
 
 def new_id(kind: IdKind, taken: Collection[str], hint: str | None = None) -> str:

@@ -44,7 +44,7 @@ export interface Scene {
  */
 export interface Shell {
   /**
-   * Building footprint: the union of all rooms.
+   * Building footprint: the union of all rooms. Roof gable_edges index its edges.
    *
    * @minItems 3
    */
@@ -277,7 +277,7 @@ export interface Roof {
    */
   slope_direction_deg: number | null;
   /**
-   * Gable roofs: indices of outline edges that become gable ends.
+   * Gable roofs: indices of shell.outline edges that become gable ends (edge i runs from point i to point i+1).
    */
   gable_edges: number[] | null;
   /**

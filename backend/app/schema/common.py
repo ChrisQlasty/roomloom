@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from app.geometry.polygon import normalise_polygon, validate_simple_ring
+from app.geometry.polygon import normalise_polygon, require_ccw_polygon, validate_simple_ring
 from app.schema.ids import id_pattern
 
 
@@ -38,6 +38,18 @@ Polygon = Annotated[
         ),
     ),
     AfterValidator(normalise_polygon),
+]
+OrientedPolygon = Annotated[
+    list[Vec2],
+    Field(
+        min_length=3,
+        description=(
+            "Closed simple polygon of plan points; the first point is not repeated. Must already "
+            "be counter-clockwise as seen from above (north up): edges are referenced by index, "
+            "edge i running from point i to point i+1."
+        ),
+    ),
+    AfterValidator(require_ccw_polygon),
 ]
 Profile = Annotated[
     list[Vec2],

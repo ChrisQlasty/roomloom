@@ -4,6 +4,7 @@ from app.geometry.polygon import (
     is_ccw_from_above,
     normalise_polygon,
     open_ring,
+    require_ccw_polygon,
     signed_area,
     validate_simple_ring,
 )
@@ -28,13 +29,19 @@ def test_normalise_reverses_clockwise_and_keeps_ccw() -> None:
     assert is_ccw_from_above(normalise_polygon(CCW_SQUARE[::-1]))
 
 
+def test_require_ccw_keeps_order_and_rejects_clockwise() -> None:
+    assert require_ccw_polygon([*CCW_SQUARE, CCW_SQUARE[0]]) == CCW_SQUARE
+    with pytest.raises(ValueError, match="counter-clockwise"):
+        require_ccw_polygon(CCW_SQUARE[::-1])
+
+
 @pytest.mark.parametrize(
     ("points", "message"),
     [
         ([(0, 0), (1, 1)], "at least 3"),
         ([(0, 0), (1, 1), (0, 0)], "at least 3"),
         ([(0, 0), (1, 1), (1, 0), (0, 1)], "self-intersecting"),
-        ([(0, 0), (1, 0), (2, 0)], "self-intersecting|zero area"),
+        ([(0, 0), (1, 0), (2, 0)], "zero area"),
     ],
 )
 def test_validate_rejects_bad_rings(points: list[tuple[float, float]], message: str) -> None:

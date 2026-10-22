@@ -36,6 +36,12 @@ def gym_ceiling_ruled_by_door(d: Data, height: float) -> None:
     room(d, "r_gym")["ceiling_height"] = height
 
 
+def inside_wide_opening(d: Data) -> None:
+    """Add a wide window spanning both room 1 north windows (1.0-8.0 vs 1.5-3.5 and 5.5-7.5)."""
+    openings = wall(d, "w_room_1_north")["openings"]
+    openings.append({**openings[0], "id": "op_wide", "offset": 1.0, "width": 7.0})
+
+
 BAD_SCENES: dict[str, tuple[Callable[[Data], None], str]] = {
     # unique ids
     "duplicate object id": (
@@ -99,6 +105,10 @@ BAD_SCENES: dict[str, tuple[Callable[[Data], None], str]] = {
     "self-intersecting outline": (
         lambda d: set_in(d["shell"], "outline", [[0, 0], [30, 20], [30, 0], [0, 20]]),
         "self-intersecting",
+    ),
+    "clockwise outline (gable edge indices would shift if reversed)": (
+        lambda d: set_in(d["shell"], "outline", d["shell"]["outline"][::-1]),
+        "must wind counter-clockwise",
     ),
     "self-intersecting extrusion profile": (
         lambda d: set_in(
@@ -176,6 +186,10 @@ BAD_SCENES: dict[str, tuple[Callable[[Data], None], str]] = {
         lambda d: set_in(wall(d, "w_room_1_north")["openings"][1], "offset", 3.0),
         "openings op_room_1_window_1 and op_room_1_window_2 overlap",
     ),
+    "opening inside an earlier, wider opening": (
+        inside_wide_opening,
+        "openings op_wide and op_room_1_window_2 overlap",
+    ),
     # transitions
     "transition rise does not match levels": (
         lambda d: set_in(d["shell"]["transitions"][0], "rise_total", 0.5),
@@ -197,6 +211,10 @@ BAD_SCENES: dict[str, tuple[Callable[[Data], None], str]] = {
     "interior wall with one room": (
         lambda d: set_in(wall(d, "w_room_1_room_2"), "right_room_id", None),
         "interior wall w_room_1_room_2 must bound two different rooms",
+    ),
+    "interior wall with one room hosting a transition": (
+        lambda d: set_in(wall(d, "w_hall_gym_north"), "left_room_id", None),
+        "interior wall w_hall_gym_north must bound two different rooms",
     ),
     "interior wall with the same room twice": (
         lambda d: set_in(wall(d, "w_room_1_room_2"), "right_room_id", "r_room_2"),

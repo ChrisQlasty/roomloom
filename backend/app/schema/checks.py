@@ -89,13 +89,15 @@ def _wall_adjacency(scene: "Scene") -> Iterator[str]:
 
 def _openings_fit(scene: "Scene") -> Iterator[str]:
     for wall in scene.shell.walls:
-        previous_end, previous_id = 0.0, None
+        furthest_end, furthest_id = 0.0, None  # opening reaching furthest along the wall so far
         for op in sorted(wall.openings, key=lambda o: o.offset):
-            if op.offset + op.width > wall.length + TOLERANCE:
+            end = op.offset + op.width
+            if end > wall.length + TOLERANCE:
                 yield f"opening {op.id} extends past the end of wall {wall.id}"
-            if previous_id and op.offset < previous_end - TOLERANCE:
-                yield f"openings {previous_id} and {op.id} overlap in wall {wall.id}"
-            previous_end, previous_id = op.offset + op.width, op.id
+            if furthest_id and op.offset < furthest_end - TOLERANCE:
+                yield f"openings {furthest_id} and {op.id} overlap in wall {wall.id}"
+            if end > furthest_end:
+                furthest_end, furthest_id = end, op.id
 
 
 def _threshold_level(wall: "Wall", levels: dict[str, float]) -> float:
@@ -113,8 +115,9 @@ def _transitions(scene: "Scene") -> Iterator[str]:
         if tr.host_room_id not in wall.room_ids:
             yield f"transition {tr.id}: host room {tr.host_room_id} is not beside the opening"
             continue
-        if wall.kind == "interior":
-            low, high = sorted(levels[r] for r in wall.room_ids if r in levels)
+        wall_levels = sorted(levels[r] for r in wall.room_ids if r in levels)
+        if wall.kind == "interior" and len(wall_levels) == 2:  # else reported by _wall_adjacency
+            low, high = wall_levels
             if abs((high - low) - tr.rise_total) > LEVEL_TOLERANCE:
                 yield (
                     f"transition {tr.id}: rise_total {tr.rise_total} does not match the floor "

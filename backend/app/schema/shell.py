@@ -7,6 +7,7 @@ from pydantic import Field, model_validator
 
 from app.schema.common import (
     MaterialRef,
+    OrientedPolygon,
     Polygon,
     PositiveFloat,
     RoomId,
@@ -145,7 +146,9 @@ class WallThickness(SchemaModel):
 class Shell(SchemaModel):
     """The locked building shell. Only room metadata and ceiling heights may change after import."""
 
-    outline: Polygon = Field(description="Building footprint: the union of all rooms.")
+    outline: OrientedPolygon = Field(
+        description="Building footprint: the union of all rooms. Roof gable_edges index its edges."
+    )
     default_ceiling_height: float = Field(
         DEFAULT_CEILING_HEIGHT, gt=0, le=MAX_CEILING_HEIGHT, description="Ceiling for new rooms."
     )
