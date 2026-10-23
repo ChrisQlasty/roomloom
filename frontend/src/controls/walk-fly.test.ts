@@ -6,7 +6,14 @@ import { framePoint, wallFrame } from '../engine/build/walls';
 import type { Wall } from '../types/scene';
 import { Colliders } from './collision';
 import { exampleColliders, FRAME, hold, walkTo } from './test-world';
-import { CAPSULE_RADIUS, CHILD_EYE_HEIGHT, EYE_HEIGHT, PITCH_LIMIT_DEG, WalkFly } from './walk-fly';
+import {
+  CAPSULE_RADIUS,
+  CHILD_EYE_HEIGHT,
+  EYE_HEIGHT,
+  HEAD_BOB_DEPTH,
+  PITCH_LIMIT_DEG,
+  WalkFly,
+} from './walk-fly';
 
 const scene = loadExampleScene();
 const colliders = exampleColliders(scene);
@@ -175,8 +182,9 @@ describe('WalkFly on a test floor', () => {
   it('steps up onto a 0.3 m ledge', () => {
     const walker = standAt([0, 0], 0, floorWithBox(0.3));
     walker.yawDeg = 90;
-    hold(walker, { forward: 1 }, 1.5);
+    hold(walker, { forward: 1 }, 0.6);
     expect(walker.feet.x).toBeGreaterThan(1.5);
+    expect(walker.feet.x).toBeLessThan(3);
     expect(walker.feet.y).toBeCloseTo(0.3, 3);
   });
 
@@ -187,6 +195,31 @@ describe('WalkFly on a test floor', () => {
     // The capsule's lower sphere touches the ledge's top edge, slightly past its side face.
     expect(walker.feet.x).toBeLessThan(1 - CAPSULE_RADIUS + 0.04);
     expect(walker.feet.y).toBeCloseTo(0, 3);
+  });
+
+  it('bobs the eye a little while walking, and not while standing or flying', () => {
+    const walker = standAt([-5, 0], 0, floorWithBox(0.3));
+    walker.yawDeg = 180;
+    const eyes: number[] = [];
+    for (let t = 0; t < 2; t += FRAME) {
+      hold(walker, { forward: 1 }, FRAME);
+      eyes.push(walker.pose().position[1]);
+    }
+    const walking = eyes.slice(30);
+    expect(Math.max(...walking)).toBeLessThanOrEqual(EYE_HEIGHT + 1e-9);
+    expect(Math.min(...walking)).toBeLessThan(EYE_HEIGHT - HEAD_BOB_DEPTH * 0.9);
+    const steps = eyes.slice(1).map((e, i) => Math.abs(e - eyes[i]!));
+    expect(Math.max(...steps)).toBeLessThan(0.01);
+    hold(walker, {}, 1.5);
+    expect(walker.pose().position[1]).toBeCloseTo(EYE_HEIGHT, 4);
+
+    walker.setFly(true);
+    const flying: number[] = [];
+    for (let t = 0; t < 1; t += FRAME) {
+      hold(walker, { forward: 1 }, FRAME);
+      flying.push(walker.pose().position[1] - walker.feet.y);
+    }
+    expect(Math.min(...flying.slice(30))).toBeCloseTo(EYE_HEIGHT, 4);
   });
 
   it('respawns after falling out of the world', () => {

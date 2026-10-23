@@ -5,19 +5,22 @@ import type { KeyboardInput } from './input';
 import { applyPose, forwardOf, wrapYaw, type Pose } from './pose';
 import { easeInOut } from './transition';
 
+/** Body height of the default (adult) walker, in metres. */
+export const PERSON_HEIGHT = 1.75;
 export const CAPSULE_RADIUS = 0.25;
-export const CAPSULE_HEIGHT = 1.7;
+export const CAPSULE_HEIGHT = PERSON_HEIGHT;
 /** Highest step (or kerb) the walker climbs without stopping, in metres. */
 export const STEP_UP = 0.35;
 /** How far the walker follows the ground down (stairs) instead of falling. */
 export const SNAP_DOWN = 0.35;
-export const EYE_HEIGHT = 1.6;
+/** Eyes sit about 11 cm below the top of the head. */
+export const EYE_HEIGHT = PERSON_HEIGHT - 0.11;
 /** Eye height of the child view (K). */
 export const CHILD_EYE_HEIGHT = 1.25;
 export const PITCH_LIMIT_DEG = 85;
 
-const WALK_SPEED = 2.0;
-const RUN_SPEED = 4.5;
+const WALK_SPEED = 4;
+const RUN_SPEED = 9;
 const FLY_SPEED = 4;
 const FLY_RUN_SPEED = 10;
 const GRAVITY = 9.81;
@@ -35,6 +38,12 @@ const EYE_TWEEN_SECONDS = 0.3;
 const STEP_SMOOTHING = 14;
 /** Below this height under the lowest floor, the walker has fallen out of the world. */
 const FALL_LIMIT = 30;
+/** Head bob while walking: how far the eye dips at each step, in metres, at walking speed. */
+export const HEAD_BOB_DEPTH = 0.04;
+/** Steps per second at walking speed; faster movement steps more often (by the square root). */
+const HEAD_BOB_STEPS_PER_SECOND = 2.2;
+/** How quickly the bob fades in and out when starting and stopping (1/s). */
+const HEAD_BOB_FADE = 8;
 
 /** Movement keys as numbers: forward/right/up in −1..1, plus run. */
 export interface MoveIntent {
@@ -56,10 +65,11 @@ export function moveIntent(keys: KeyboardInput): MoveIntent {
 }
 
 /**
- * The walking and flying body: a capsule (radius 0.25 m, 1.7 m tall) moved through the
+ * The walking and flying body: a capsule (radius 0.25 m, 1.75 m tall) moved through the
  * {@link Colliders}. Walking, the capsule floats {@link STEP_UP} above the feet, so steps and
  * kerbs pass under it and a downward ground probe lifts the feet onto them; gravity pulls it down.
- * Flying has no gravity, and collision can be switched off.
+ * Walking on the ground, the eye bobs slightly with each step. Flying has no gravity and no bob,
+ * and collision can be switched off.
  */
 export class WalkFly {
   /** Feet position, world metres. */
@@ -76,6 +86,9 @@ export class WalkFly {
   private eyeTween: { from: number; to: number; t: number } | null = null;
   /** Eye offset left by the last step up or down, eased back to zero. */
   private stepLag = 0;
+  /** Head bob: phase within the current step (radians) and strength (0 standing, 1 walking). */
+  private bobPhase = 0;
+  private bobWeight = 0;
   private readonly segment = new THREE.Line3();
   private readonly move = new THREE.Vector3();
 
@@ -99,6 +112,8 @@ export class WalkFly {
     this.yawDeg = wrapYaw(yawDeg);
     this.pitchDeg = THREE.MathUtils.clamp(pitchDeg, -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG);
     this.stepLag = 0;
+    this.bobPhase = 0;
+    this.bobWeight = 0;
     this.grounded = false;
   }
 
@@ -133,7 +148,11 @@ export class WalkFly {
   /** The eye pose (camera position and direction). */
   pose(): Pose {
     return {
-      position: [this.feet.x, this.feet.y + this.eyeHeight + this.stepLag, this.feet.z],
+      position: [
+        this.feet.x,
+        this.feet.y + this.eyeHeight + this.stepLag + this.bobOffset(),
+        this.feet.z,
+      ],
       yawDeg: this.yawDeg,
       pitchDeg: this.pitchDeg,
     };
@@ -172,8 +191,28 @@ export class WalkFly {
     this.move.copy(v).multiplyScalar(dt);
     const steps = Math.max(1, Math.ceil(this.move.length() / MAX_SUBSTEP));
     this.move.divideScalar(steps);
+    const [x0, z0] = [this.feet.x, this.feet.z];
     for (let i = 0; i < steps; i++) this.step(this.move);
     if (this.feet.y < this.lowestFloor - FALL_LIMIT) this.respawn();
+    else if (dt > 0) this.updateBob(dt, Math.hypot(this.feet.x - x0, this.feet.z - z0) / dt);
+  }
+
+  /** Advance the head bob by the horizontal speed actually moved (not into walls). */
+  private updateBob(dt: number, speed: number): void {
+    const walking = !this.fly && this.grounded && speed > 0.1;
+    const weight = walking ? Math.min(speed / WALK_SPEED, 1.5) : 0;
+    this.bobWeight += (weight - this.bobWeight) * (1 - Math.exp(-HEAD_BOB_FADE * dt));
+    if (this.bobWeight < 1e-3) {
+      this.bobPhase = 0;
+      return;
+    }
+    const rate = HEAD_BOB_STEPS_PER_SECOND * Math.sqrt(speed / WALK_SPEED);
+    this.bobPhase = (this.bobPhase + 2 * Math.PI * rate * dt) % (2 * Math.PI);
+  }
+
+  /** Eye offset of the head bob: a smooth dip once per step, zero when standing. */
+  private bobOffset(): number {
+    return (-HEAD_BOB_DEPTH * this.bobWeight * (1 - Math.cos(this.bobPhase))) / 2;
   }
 
   private updateEye(dt: number): void {

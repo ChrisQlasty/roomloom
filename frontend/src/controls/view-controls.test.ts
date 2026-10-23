@@ -6,6 +6,7 @@ import { poseOf } from './pose';
 import { spawnPose } from './spawn';
 import { exampleColliders, FRAME } from './test-world';
 import { ViewControls, type ControlEvents } from './view-controls';
+import { EYE_HEIGHT } from './walk-fly';
 
 const scene = loadExampleScene();
 const colliders = exampleColliders(scene);
@@ -86,7 +87,7 @@ describe('ViewControls', () => {
     expect(controls.mode).toBe('walk');
     const pose = poses.at(-1)!;
     expect(pose.position[0]).toBeCloseTo(6, 6);
-    expect(pose.position[1]).toBeCloseTo(1.6, 3);
+    expect(pose.position[1]).toBeCloseTo(EYE_HEIGHT, 3);
     expect(pose.position[2]).toBeCloseTo(2, 6);
     expect(pose.yawDeg).toBeCloseTo(180, 6);
     const count = poses.length;
