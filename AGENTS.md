@@ -25,7 +25,7 @@ backend/app/
 frontend/src/
   app/                  router, app state, i18n
   engine/               renderer, quality presets, build/{shell,roof,objects,materials,pins}, reconciler
-  controls/             walk-fly, orbit, collision
+  controls/             walk, orbit, collision
   ui/                   minimap, hud, side-panel/{chat,photos,history,backlog}, project-picker
   net/                  REST client, websocket
   types/scene.ts        GENERATED, do not edit (also types/project.ts)

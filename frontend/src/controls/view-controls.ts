@@ -6,16 +6,16 @@ import { OrbitMode, viewState } from './orbit';
 import { applyPose, poseOf, type Pose } from './pose';
 import type { SpawnPose } from './spawn';
 import { cameraState, CameraTransition } from './transition';
-import { moveIntent, PointerLook, WalkFly } from './walk-fly';
+import { moveIntent, PointerLook, Walker } from './walk';
 
-export type ControlMode = 'walk' | 'fly' | 'orbit';
+export type ControlMode = 'walk' | 'orbit';
 
 /** Events of {@link ViewControls}. */
 export interface ControlEvents {
   /** The camera moved or turned (eye position, yaw and pitch in schema conventions). */
   pose: Pose;
-  /** The mode changed, or collision was switched in fly mode. */
-  mode: { mode: ControlMode; collision: boolean };
+  /** The mode changed. */
+  mode: ControlMode;
 }
 
 /** Setup of {@link ViewControls}. */
@@ -47,12 +47,12 @@ function samePose(a: Pose | null, b: Pose): boolean {
 }
 
 /**
- * The camera controller: walk, fly (F, C switches collision off) and orbit (O) with animated
- * changes between them, plus the child eye height (K). Call {@link update} once per frame.
+ * The camera controller: walk and orbit (O) with animated changes between them, plus the child
+ * eye height (K). Call {@link update} once per frame.
  */
 export class ViewControls {
   readonly events = new Emitter<ControlEvents>();
-  readonly walker: WalkFly;
+  readonly walker: Walker;
   readonly orbit: OrbitMode;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly keyboard: KeyboardInput;
@@ -67,7 +67,7 @@ export class ViewControls {
     this.camera = options.camera;
     this.ownsKeyboard = !options.keyboard;
     this.keyboard = options.keyboard ?? new KeyboardInput();
-    this.walker = new WalkFly(options.colliders, options.spawn, options.lowestFloor);
+    this.walker = new Walker(options.colliders, options.spawn, options.lowestFloor);
     this.orbit = new OrbitMode(options.camera, options.element);
     this.orbit.setBounds(options.bounds);
     this.pointer = new PointerLook(options.element, (dx, dy) => {
@@ -109,20 +109,10 @@ export class ViewControls {
     }
   }
 
-  /** Handle a mode key (F, C, O, K); other keys are ignored. */
+  /** Handle a mode key (O, K); other keys are ignored. */
   onKey(code: string): void {
     if (this.transition) return;
     switch (code) {
-      case 'KeyF':
-        if (this.current === 'orbit') return;
-        this.walker.setFly(!this.walker.fly);
-        this.setMode(this.walker.fly ? 'fly' : 'walk');
-        return;
-      case 'KeyC':
-        if (this.current !== 'fly') return;
-        this.walker.collision = !this.walker.collision;
-        this.emitMode();
-        return;
       case 'KeyO':
         if (this.current === 'orbit') this.leaveOrbit();
         else this.enterOrbit();
@@ -149,7 +139,7 @@ export class ViewControls {
     this.setMode('orbit');
   }
 
-  /** Back to walking or flying where the walker was (it does not move while orbiting). */
+  /** Back to walking where the walker was (it does not move while orbiting). */
   private leaveOrbit(): void {
     this.orbit.disable();
     const target = new THREE.Object3D();
@@ -158,7 +148,7 @@ export class ViewControls {
     this.animateTo(cameraState(target), () => {
       this.pointer.enabled = true;
     });
-    this.setMode(this.walker.fly ? 'fly' : 'walk');
+    this.setMode('walk');
   }
 
   private animateTo(to: ReturnType<typeof cameraState>, onDone: () => void): void {
@@ -167,10 +157,6 @@ export class ViewControls {
 
   private setMode(mode: ControlMode): void {
     this.current = mode;
-    this.emitMode();
-  }
-
-  private emitMode(): void {
-    this.events.emit('mode', { mode: this.current, collision: this.walker.collision });
+    this.events.emit('mode', mode);
   }
 }

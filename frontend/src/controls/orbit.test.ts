@@ -22,6 +22,15 @@ describe('orbitStartView', () => {
     expect(offset.z / flat).toBeCloseTo(-5 / Math.hypot(13, 5), 6);
   });
 
+  it('steps further back in a narrow (portrait) view, so the sides still fit', () => {
+    const eye = { position: [28, 1.6, 5] as const, yawDeg: 0, pitchDeg: 0 };
+    const wide = orbitStartView(bounds, eye, 40, 2).position.distanceTo(center);
+    const narrow = orbitStartView(bounds, eye, 40, 0.5).position.distanceTo(center);
+    const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(20)) * 0.5);
+    expect(narrow).toBeGreaterThan(wide);
+    expect(narrow).toBeCloseTo(Math.min(radius / Math.sin(halfH), radius * MAX_DISTANCE_FACTOR), 6);
+  });
+
   it('steps back behind the view direction when the eye is at the centre', () => {
     const at = center.toArray();
     const view = orbitStartView(bounds, { position: at, yawDeg: 90, pitchDeg: 0 }, 60);

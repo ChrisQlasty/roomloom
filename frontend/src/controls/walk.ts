@@ -14,14 +14,14 @@ export const CAPSULE_HEIGHT = EYE_HEIGHT + 0.11;
 export const STEP_UP = 0.35;
 /** How far the walker follows the ground down (stairs) instead of falling. */
 export const SNAP_DOWN = 0.35;
+/** Height of the capsule's lower sphere centre above the feet. */
+const CAPSULE_BOTTOM = STEP_UP + CAPSULE_RADIUS;
 /** Eye height of the child view (K). */
 export const CHILD_EYE_HEIGHT = 1.25;
 export const PITCH_LIMIT_DEG = 85;
 
 const WALK_SPEED = 4;
 const RUN_SPEED = 9;
-const FLY_SPEED = 4;
-const FLY_RUN_SPEED = 10;
 const GRAVITY = 9.81;
 const MAX_FALL_SPEED = 30;
 /** How quickly the velocity follows the keys (1/s): about 0.2 s to full speed. */
@@ -44,42 +44,36 @@ const HEAD_BOB_STEPS_PER_SECOND = 2.2;
 /** How quickly the bob fades in and out when starting and stopping (1/s). */
 const HEAD_BOB_FADE = 8;
 
-/** Movement keys as numbers: forward/right/up in −1..1, plus run. */
+/** Movement keys as numbers: forward/right in −1..1, plus run. */
 export interface MoveIntent {
   forward: number;
   right: number;
-  up: number;
   run: boolean;
 }
 
-/** WASD, Space/Ctrl (fly up/down) and Shift (run) from the keyboard state. */
+/** WASD and Shift (run) from the keyboard state. */
 export function moveIntent(keys: KeyboardInput): MoveIntent {
   const axis = (plus: boolean, minus: boolean): number => Number(plus) - Number(minus);
   return {
     forward: axis(keys.isDown('KeyW'), keys.isDown('KeyS')),
     right: axis(keys.isDown('KeyD'), keys.isDown('KeyA')),
-    up: axis(keys.isDown('Space'), keys.isDown('ControlLeft', 'ControlRight')),
     run: keys.isDown('ShiftLeft', 'ShiftRight'),
   };
 }
 
 /**
- * The walking and flying body: a capsule (radius 0.25 m, 1.86 m tall) moved through the
- * {@link Colliders}. Walking, the capsule floats {@link STEP_UP} above the feet, so steps and
- * kerbs pass under it and a downward ground probe lifts the feet onto them; gravity pulls it down.
- * Walking on the ground, the eye bobs slightly with each step. Flying has no gravity and no bob,
- * and collision can be switched off.
+ * The walking body: a capsule (radius 0.25 m, 1.86 m tall) moved through the {@link Colliders}.
+ * The capsule floats {@link STEP_UP} above the feet, so steps and kerbs pass under it and a
+ * downward ground probe lifts the feet onto them; gravity pulls it down. A move that would put
+ * the head into a ceiling or lintel is blocked like a wall. On the ground, the eye bobs slightly
+ * with each step.
  */
-export class WalkFly {
+export class Walker {
   /** Feet position, world metres. */
   readonly feet = new THREE.Vector3();
   readonly velocity = new THREE.Vector3();
   yawDeg = 0;
   pitchDeg = 0;
-  /** Fly mode: no gravity, Space/Ctrl move up and down. */
-  fly = false;
-  /** Collision while flying; walking always collides. */
-  collision = true;
   grounded = false;
   private eyeHeight = EYE_HEIGHT;
   private eyeTween: { from: number; to: number; t: number } | null = null;
@@ -90,6 +84,7 @@ export class WalkFly {
   private bobWeight = 0;
   private readonly segment = new THREE.Line3();
   private readonly move = new THREE.Vector3();
+  private readonly prevFeet = new THREE.Vector3();
 
   constructor(
     private readonly colliders: Colliders,
@@ -137,13 +132,6 @@ export class WalkFly {
     this.eyeTween = { from: this.eyeHeight, to, t: 0 };
   }
 
-  /** Switch flying on or off; walking starts at rest and falls if in the air. */
-  setFly(fly: boolean): void {
-    this.fly = fly;
-    this.velocity.y = 0;
-    this.grounded = false;
-  }
-
   /** The eye pose (camera position and direction). */
   pose(): Pose {
     return {
@@ -167,13 +155,7 @@ export class WalkFly {
   update(dt: number, intent: MoveIntent): void {
     dt = Math.min(dt, MAX_FRAME);
     this.updateEye(dt);
-    const speed = this.fly
-      ? intent.run
-        ? FLY_RUN_SPEED
-        : FLY_SPEED
-      : intent.run
-        ? RUN_SPEED
-        : WALK_SPEED;
+    const speed = intent.run ? RUN_SPEED : WALK_SPEED;
     const [fx, fz] = forwardOf(this.yawDeg);
     let wx = fx * intent.forward - fz * intent.right;
     let wz = fz * intent.forward + fx * intent.right;
@@ -183,9 +165,8 @@ export class WalkFly {
     const v = this.velocity;
     v.x += (wx * speed - v.x) * k;
     v.z += (wz * speed - v.z) * k;
-    if (this.fly) v.y += (intent.up * speed - v.y) * k;
     // On the ground, the probe keeps the feet on it; gravity only acts in the air.
-    else v.y = this.grounded ? 0 : Math.max(v.y - GRAVITY * dt, -MAX_FALL_SPEED);
+    v.y = this.grounded ? 0 : Math.max(v.y - GRAVITY * dt, -MAX_FALL_SPEED);
 
     this.move.copy(v).multiplyScalar(dt);
     const steps = Math.max(1, Math.ceil(this.move.length() / MAX_SUBSTEP));
@@ -198,7 +179,7 @@ export class WalkFly {
 
   /** Advance the head bob by the horizontal speed actually moved (not into walls). */
   private updateBob(dt: number, speed: number): void {
-    const walking = !this.fly && this.grounded && speed > 0.1;
+    const walking = this.grounded && speed > 0.1;
     const weight = walking ? Math.min(speed / WALK_SPEED, 1.5) : 0;
     this.bobWeight += (weight - this.bobWeight) * (1 - Math.exp(-HEAD_BOB_FADE * dt));
     if (this.bobWeight < 1e-3) {
@@ -226,27 +207,22 @@ export class WalkFly {
   /** One collision substep of at most {@link MAX_SUBSTEP}. */
   private step(move: THREE.Vector3): void {
     const feet = this.feet;
-    const prevY = feet.y;
+    const prev = this.prevFeet.copy(feet);
+    const [prevGrounded, prevLag] = [this.grounded, this.stepLag];
     feet.add(move);
-    if (this.fly && !this.collision) return;
 
-    // Walls and other obstacles: push the floating capsule out (only sideways when walking).
-    const bottom = STEP_UP + CAPSULE_RADIUS;
-    this.segment.start.set(feet.x, feet.y + bottom, feet.z);
-    this.segment.end.set(feet.x, feet.y + CAPSULE_HEIGHT - CAPSULE_RADIUS, feet.z);
-    this.colliders.resolveCapsule(this.segment, CAPSULE_RADIUS, !this.fly);
-    feet.set(this.segment.start.x, this.segment.start.y - bottom, this.segment.start.z);
+    // Walls and other obstacles: push the floating capsule out sideways (floors and steps are
+    // handled by the ground probe below).
+    this.placeCapsule(feet);
+    this.colliders.resolveCapsule(this.segment, CAPSULE_RADIUS);
+    feet.set(this.segment.start.x, this.segment.start.y - CAPSULE_BOTTOM, this.segment.start.z);
 
     // Ground: from a step's height above the feet down to where they ended (or a bit lower
-    // while walking on the ground, to follow stairs down instead of falling).
-    const top = Math.max(prevY, feet.y) + STEP_UP;
-    const follow = !this.fly && this.grounded;
-    const lowest = Math.min(feet.y, follow ? prevY - SNAP_DOWN : feet.y);
+    // while on the ground, to follow stairs down instead of falling).
+    const top = Math.max(prev.y, feet.y) + STEP_UP;
+    const follow = this.grounded;
+    const lowest = Math.min(feet.y, follow ? prev.y - SNAP_DOWN : feet.y);
     const ground = this.colliders.groundHeight(feet.x, feet.z, top, top - lowest, CAPSULE_RADIUS);
-    if (this.fly) {
-      if (ground !== null && ground > feet.y) feet.y = ground;
-      return;
-    }
     if (ground !== null && (follow || ground >= feet.y)) {
       if (follow) this.stepLag = THREE.MathUtils.clamp(this.stepLag - (ground - feet.y), -0.5, 0.5);
       feet.y = ground;
@@ -255,6 +231,25 @@ export class WalkFly {
     } else {
       this.grounded = false;
     }
+
+    // A ceiling or lintel too low for the head (e.g. after stepping up) blocks the move, unless
+    // the walker already stood in it, so it can always walk out.
+    if (this.headBlocked(feet) && !this.headBlocked(prev)) {
+      feet.copy(prev);
+      [this.grounded, this.stepLag] = [prevGrounded, prevLag];
+    }
+  }
+
+  /** Put the capsule segment above `feet`. */
+  private placeCapsule(feet: THREE.Vector3): void {
+    this.segment.start.set(feet.x, feet.y + CAPSULE_BOTTOM, feet.z);
+    this.segment.end.set(feet.x, feet.y + CAPSULE_HEIGHT - CAPSULE_RADIUS, feet.z);
+  }
+
+  /** Whether the capsule standing at `feet` overlaps something a sideways push cannot resolve. */
+  private headBlocked(feet: THREE.Vector3): boolean {
+    this.placeCapsule(feet);
+    return this.colliders.overlapsVertically(this.segment, CAPSULE_RADIUS);
   }
 }
 
@@ -265,7 +260,9 @@ export class WalkFly {
 export class PointerLook {
   enabled = true;
   private readonly onClick = (): void => {
-    if (this.enabled && !this.locked) void this.element.requestPointerLock();
+    if (!this.enabled || this.locked) return;
+    // The browser refuses a lock right after Esc released one; the next click tries again.
+    Promise.resolve(this.element.requestPointerLock()).catch(() => undefined);
   };
   private readonly onMove = (event: MouseEvent): void => {
     if (this.locked) this.onLook(event.movementX, event.movementY);

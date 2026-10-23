@@ -65,16 +65,16 @@ describe('KeyboardInput', () => {
     expect(pressed).toEqual(['KeyD']);
   });
 
-  it('holds Ctrl (fly down) but leaves browser shortcuts alone', () => {
+  it('leaves Cmd, Ctrl and Alt shortcuts to the browser', () => {
     const target = new EventTarget();
     const input = new KeyboardInput(target);
     const pressed: string[] = [];
     input.onPress((code) => pressed.push(code));
     target.dispatchEvent(key('keydown', 'ControlLeft', { ctrlKey: true }));
-    target.dispatchEvent(key('keydown', 'KeyF', { ctrlKey: true }));
+    target.dispatchEvent(key('keydown', 'KeyW', { ctrlKey: true }));
     target.dispatchEvent(key('keydown', 'KeyO', { metaKey: true }));
-    expect(input.isDown('ControlLeft')).toBe(true);
-    expect(input.isDown('KeyO')).toBe(false);
+    target.dispatchEvent(key('keydown', 'KeyK', { altKey: true }));
+    expect(input.isDown('ControlLeft', 'KeyW', 'KeyO', 'KeyK')).toBe(false);
     expect(pressed).toEqual([]);
   });
 

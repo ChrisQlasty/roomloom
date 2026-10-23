@@ -7,7 +7,7 @@ import { poseOf } from './pose';
 import { spawnPose } from './spawn';
 import { exampleColliders, FRAME } from './test-world';
 import { ViewControls, type ControlEvents } from './view-controls';
-import { EYE_HEIGHT } from './walk-fly';
+import { EYE_HEIGHT } from './walk';
 
 const scene = loadExampleScene();
 const colliders = exampleColliders(scene);
@@ -105,20 +105,6 @@ describe('ViewControls', () => {
     expect(poses.at(-1)!.position[2]).toBeGreaterThan(3.5); // yaw 180 faces +Z (south)
   });
 
-  it('toggles fly with F and collision with C (only while flying)', () => {
-    keyDown(keys, 'KeyC');
-    keyDown(keys, 'KeyF');
-    keyDown(keys, 'KeyC');
-    keyDown(keys, 'KeyC');
-    keyDown(keys, 'KeyF');
-    expect(modes).toEqual([
-      { mode: 'fly', collision: true },
-      { mode: 'fly', collision: false },
-      { mode: 'fly', collision: true },
-      { mode: 'walk', collision: true },
-    ]);
-  });
-
   it('animates into orbit and back to the last walk position in at most 0.5 s, without jumps', () => {
     run(0.3);
     keyDown(keys, 'KeyW');
@@ -145,7 +131,7 @@ describe('ViewControls', () => {
     const pose = poseOf(camera);
     pose.position.forEach((v, i) => expect(v).toBeCloseTo(walkPose.position[i]!, 3));
     expect(pose.yawDeg).toBeCloseTo(walkPose.yawDeg, 4);
-    expect(modes.map((m) => m.mode)).toEqual(['orbit', 'walk']);
+    expect(modes).toEqual(['orbit', 'walk']);
 
     // Eased: no single frame covers more than a tenth of the way.
     for (const path of [into, back]) {
@@ -154,21 +140,6 @@ describe('ViewControls', () => {
       expect(Math.max(...steps)).toBeLessThan(total / 10);
       expect(steps[0]!).toBeLessThan(total / 100);
     }
-  });
-
-  it('returns to flying where the flight was left', () => {
-    keyDown(keys, 'KeyF');
-    keyDown(keys, 'Space');
-    run(0.5);
-    keyUp(keys, 'Space');
-    run(1);
-    const y = camera.position.y;
-    keyDown(keys, 'KeyO');
-    run(0.5);
-    keyDown(keys, 'KeyO');
-    run(0.5);
-    expect(controls.mode).toBe('fly');
-    expect(camera.position.y).toBeCloseTo(y, 6);
   });
 
   it('lets orbit panning slide the centre, but not far past the building', () => {
@@ -192,11 +163,38 @@ describe('ViewControls', () => {
     expect(orbit.enablePan).toBe(true);
   });
 
-  it('ignores F in orbit mode and switches the child view with K', () => {
+  it('has no fly mode: F, C and Space do nothing', () => {
+    run(0.5);
+    const y = camera.position.y;
+    for (const code of ['KeyF', 'KeyC', 'Space']) keyDown(keys, code);
+    run(1);
+    expect(controls.mode).toBe('walk');
+    expect(modes).toEqual([]);
+    expect(camera.position.y).toBeCloseTo(y, 6);
+  });
+
+  it('drops drag momentum when leaving orbit, so re-entering starts at rest', () => {
     keyDown(keys, 'KeyO');
     run(0.5);
-    keyDown(keys, 'KeyF');
-    expect(controls.mode).toBe('orbit');
+    const { controls: orbit } = controls.orbit;
+    // A flick: a big pending rotation, as a fast drag leaves with damping on.
+    orbit.rotateLeft(1);
+    keyDown(keys, 'KeyO');
+    run(0.5);
+    keyDown(keys, 'KeyO');
+    run(0.5);
+    const start = camera.position.clone();
+    run(1);
+    expect(camera.position.distanceTo(start)).toBeLessThan(1e-6);
+  });
+
+  it('pans in orbit mode when dragging with the wheel pressed', () => {
+    expect(controls.orbit.controls.mouseButtons.MIDDLE).toBe(THREE.MOUSE.PAN);
+  });
+
+  it('switches the child view with K', () => {
+    keyDown(keys, 'KeyO');
+    run(0.5);
     keyDown(keys, 'KeyO');
     run(0.5);
     keyDown(keys, 'KeyK');

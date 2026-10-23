@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { assetUrl, fetchScene } from '../../net/api';
-import { MaterialLibrary } from '../build/materials';
-import { resolveShellHit, ShellBuilder, type ShellTag } from '../build/shell';
+import { fetchScene } from '../../net/api';
+import { resolveShellHit, type ShellTag } from '../build/shell';
+import { createDebugWorld } from './debug-world';
 
 /** Project the page shows unless `?project=<slug>` names another. */
 const DEFAULT_PROJECT = 'example-l-house';
-const MAX_PIXEL_RATIO = 2;
 
 function describeTag(tag: ShellTag | null): string {
   if (!tag) return '–';
@@ -40,31 +39,15 @@ export async function startShellDebugPage(params: URLSearchParams): Promise<void
   });
   if (!scene) return;
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  document.body.appendChild(renderer.domElement);
-  const world = new THREE.Scene();
-  world.background = new THREE.Color(0x1b1d22);
-  // Plain lighting so ceilings (facing down) stay readable; real lighting comes with the renderer.
-  world.add(
-    new THREE.HemisphereLight(0xffffff, 0x444455, 1.4),
-    new THREE.AmbientLight(0xffffff, 0.8),
-  );
-  const sun = new THREE.DirectionalLight(0xffffff, 2);
-  sun.position.set(-20, 40, -10);
-  world.add(sun, new THREE.AxesHelper(5));
-
-  const materials = new MaterialLibrary(scene.materials, {
-    quality: 'medium',
-    textureUrl: (id) => assetUrl(slug, id),
-  });
-  const shell = new ShellBuilder(materials);
-  shell.build(scene.shell);
-  world.add(shell.root);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.05);
+  const { renderer, world, shell } = createDebugWorld(slug, scene, camera, 0x1b1d22);
+  world.add(new THREE.AxesHelper(5));
 
   const box = new THREE.Box3().setFromObject(shell.root);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3()).length();
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.05, size * 10);
+  camera.far = size * 10;
+  camera.updateProjectionMatrix();
   camera.position.copy(
     vectorParam(params, 'cam') ??
       center.clone().add(new THREE.Vector3(0.5, 0.8, 0.9).multiplyScalar(size)),
@@ -72,15 +55,6 @@ export async function startShellDebugPage(params: URLSearchParams): Promise<void
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.copy(vectorParam(params, 'look') ?? center);
   controls.update();
-
-  const fit = (): void => {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-  };
-  fit();
-  window.addEventListener('resize', fit);
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();

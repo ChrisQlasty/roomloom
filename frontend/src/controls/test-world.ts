@@ -7,7 +7,7 @@ import { loadExampleScene } from '../engine/build/test-scene';
 import type { Scene } from '../types/scene';
 import { Colliders } from './collision';
 import { yawOf } from './pose';
-import type { MoveIntent, WalkFly } from './walk-fly';
+import type { MoveIntent, Walker } from './walk';
 
 /** Simulation frame length used by the tests: 60 fps. */
 export const FRAME = 1 / 60;
@@ -25,11 +25,11 @@ export function exampleColliders(scene: Scene = loadExampleScene()): Colliders {
 
 /** Run `seconds` of simulation with fixed keys; returns the feet position after every frame. */
 export function hold(
-  walker: WalkFly,
+  walker: Walker,
   intent: Partial<MoveIntent>,
   seconds: number,
 ): THREE.Vector3[] {
-  const keys: MoveIntent = { forward: 0, right: 0, up: 0, run: false, ...intent };
+  const keys: MoveIntent = { forward: 0, right: 0, run: false, ...intent };
   const path: THREE.Vector3[] = [];
   for (let t = 0; t < seconds; t += FRAME) {
     walker.update(FRAME, keys);
@@ -43,7 +43,7 @@ export function hold(
  * metres or `timeout` seconds. Returns the feet positions and the eye heights after every frame.
  */
 export function walkTo(
-  walker: WalkFly,
+  walker: Walker,
   to: Vec2,
   { run = false, reach = 0.1, timeout = 20 } = {},
 ): { path: THREE.Vector3[]; eyes: number[]; arrived: boolean } {
@@ -54,7 +54,7 @@ export function walkTo(
     const dz = to[1] - walker.feet.z;
     if (Math.hypot(dx, dz) < reach) return { path, eyes, arrived: true };
     walker.yawDeg = yawOf(dx, dz);
-    walker.update(FRAME, { forward: 1, right: 0, up: 0, run });
+    walker.update(FRAME, { forward: 1, right: 0, run });
     path.push(walker.feet.clone());
     eyes.push(walker.pose().position[1]);
   }

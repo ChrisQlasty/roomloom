@@ -12,16 +12,16 @@ import {
   EYE_HEIGHT,
   HEAD_BOB_DEPTH,
   PITCH_LIMIT_DEG,
-  WalkFly,
-} from './walk-fly';
+  Walker,
+} from './walk';
 
 const scene = loadExampleScene();
 const colliders = exampleColliders(scene);
 const floorOf = new Map(scene.shell.rooms.map((r) => [r.id, r.floor_level]));
 
 /** A walker standing still on the floor at plan point `at`. */
-function standAt(at: Vec2, floor: number, world: Colliders = colliders): WalkFly {
-  const walker = new WalkFly(world, { position: [at[0], floor, at[1]], yawDeg: 0 });
+function standAt(at: Vec2, floor: number, world: Colliders = colliders): Walker {
+  const walker = new Walker(world, { position: [at[0], floor, at[1]], yawDeg: 0 });
   hold(walker, {}, 0.2);
   return walker;
 }
@@ -38,7 +38,7 @@ function sideFloor(wall: Wall, side: 1 | -1): number {
   return room ? floorOf.get(room)! : 0;
 }
 
-describe('WalkFly on the example project', () => {
+describe('Walker on the example project', () => {
   it('settles on the floor at the spawn point', () => {
     const walker = standAt([6, 2], 0.5);
     hold(walker, {}, 0.5);
@@ -110,7 +110,7 @@ describe('WalkFly on the example project', () => {
       let closest = Infinity;
       walkTo(walker, target, { run: true, timeout: 1.5 });
       for (let t = 0; t < 1; t += FRAME) {
-        walker.update(FRAME, { forward: 1, right: 0, up: 0, run: true });
+        walker.update(FRAME, { forward: 1, right: 0, run: true });
         closest = Math.min(closest, distance());
       }
       expect(closest).toBeGreaterThan(wall.thickness / 2 + CAPSULE_RADIUS - 0.02);
@@ -118,56 +118,7 @@ describe('WalkFly on the example project', () => {
   );
 });
 
-describe('flying', () => {
-  // Room 1's first north window: sill 0.9 m, 1.6 m tall, centred at x = 18.5 on the z = 0 wall.
-  const insideWindow: Vec2 = [18.5, 1.5];
-
-  function flyer(collision: boolean): WalkFly {
-    const walker = standAt(insideWindow, 0);
-    walker.setFly(true);
-    walker.collision = collision;
-    hold(walker, { up: 1 }, 0.2);
-    walker.yawDeg = 0;
-    return walker;
-  }
-
-  it('rises and stays up without gravity', () => {
-    const walker = flyer(true);
-    hold(walker, {}, 1); // coast to a stop
-    const y = walker.feet.y;
-    expect(y).toBeGreaterThan(0.5);
-    hold(walker, {}, 1);
-    expect(walker.feet.y).toBeCloseTo(y, 4);
-  });
-
-  it('is stopped by the window glass (on the wall centre plane) with collision on', () => {
-    const walker = flyer(true);
-    hold(walker, { forward: 1, run: true }, 2);
-    expect(walker.feet.z).toBeGreaterThan(CAPSULE_RADIUS - 0.02);
-  });
-
-  it('flies out through the window with collision off', () => {
-    const walker = flyer(false);
-    hold(walker, { forward: 1 }, 2);
-    expect(walker.feet.z).toBeLessThan(-2);
-  });
-
-  it('cannot sink through the floor with collision on', () => {
-    const walker = flyer(true);
-    hold(walker, { up: -1, run: true }, 2);
-    expect(walker.feet.y).toBeCloseTo(0, 3);
-  });
-
-  it('falls back to the floor when flying is switched off', () => {
-    const walker = flyer(true);
-    walker.setFly(false);
-    hold(walker, {}, 1.5);
-    expect(walker.grounded).toBe(true);
-    expect(walker.feet.y).toBeCloseTo(0, 3);
-  });
-});
-
-describe('WalkFly on a test floor', () => {
+describe('Walker on a test floor', () => {
   /** A flat floor at y = 0 with a box of height `h` from x = 1 to 3. */
   function floorWithBox(h: number): Colliders {
     const world = new Colliders();
@@ -176,6 +127,15 @@ describe('WalkFly on a test floor', () => {
     box.position.set(2, h / 2, 0);
     world.addColliders('floor', floor);
     world.addColliders('box', box);
+    return world;
+  }
+
+  /** {@link floorWithBox} under a ceiling (facing down) at `height`. */
+  function underCeiling(h: number, height: number): Colliders {
+    const world = floorWithBox(h);
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(20, 20).rotateX(Math.PI / 2));
+    ceiling.position.y = height;
+    world.addColliders('ceiling', ceiling);
     return world;
   }
 
@@ -197,7 +157,28 @@ describe('WalkFly on a test floor', () => {
     expect(walker.feet.y).toBeCloseTo(0, 3);
   });
 
-  it('bobs the eye a little while walking, and not while standing or flying', () => {
+  it('does not step up where the head would hit the ceiling', () => {
+    // 2.05 m clears the walker on the floor (1.86 m) but not on the 0.3 m ledge (2.16 m).
+    const walker = standAt([0, 0], 0, underCeiling(0.3, 2.05));
+    walker.yawDeg = 90;
+    hold(walker, { forward: 1 }, 1);
+    expect(walker.feet.x).toBeLessThan(1);
+    expect(walker.feet.y).toBeCloseTo(0, 3);
+    // With more headroom the same ledge is climbed.
+    const tall = standAt([0, 0], 0, underCeiling(0.3, 2.3));
+    tall.yawDeg = 90;
+    hold(tall, { forward: 1 }, 0.6);
+    expect(tall.feet.y).toBeCloseTo(0.3, 3);
+  });
+
+  it('can walk out from under a ceiling it already touches', () => {
+    const walker = standAt([0, 0], 0, underCeiling(0, 1.8));
+    walker.yawDeg = 90;
+    hold(walker, { forward: 1 }, 0.5);
+    expect(walker.feet.x).toBeGreaterThan(1);
+  });
+
+  it('bobs the eye a little while walking, and not while standing', () => {
     const walker = standAt([-5, 0], 0, floorWithBox(0.3));
     walker.yawDeg = 180;
     const eyes: number[] = [];
@@ -212,24 +193,16 @@ describe('WalkFly on a test floor', () => {
     expect(Math.max(...steps)).toBeLessThan(0.01);
     hold(walker, {}, 1.5);
     expect(walker.pose().position[1]).toBeCloseTo(EYE_HEIGHT, 4);
-
-    walker.setFly(true);
-    const flying: number[] = [];
-    for (let t = 0; t < 1; t += FRAME) {
-      hold(walker, { forward: 1 }, FRAME);
-      flying.push(walker.pose().position[1] - walker.feet.y);
-    }
-    expect(Math.min(...flying.slice(30))).toBeCloseTo(EYE_HEIGHT, 4);
   });
 
   it('respawns after falling out of the world', () => {
-    const walker = new WalkFly(new Colliders(), { position: [1, 0, 2], yawDeg: 90 });
+    const walker = new Walker(new Colliders(), { position: [1, 0, 2], yawDeg: 90 });
     hold(walker, {}, 4);
     expect(walker.feet.y).toBeGreaterThan(-30);
   });
 
   it('clamps pitch to ±85° and wraps yaw', () => {
-    const walker = new WalkFly(new Colliders(), { position: [0, 0, 0], yawDeg: 350 });
+    const walker = new Walker(new Colliders(), { position: [0, 0, 0], yawDeg: 350 });
     walker.look(200, -10_000);
     expect(walker.pitchDeg).toBe(PITCH_LIMIT_DEG);
     walker.look(0, 20_000);

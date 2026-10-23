@@ -73,4 +73,21 @@ describe('roomCenter', () => {
     expect(inside).toBe(true);
     expect(Math.min(x, z)).toBeGreaterThan(0.3);
   });
+
+  it('picks the point farthest from the walls when the vertex average is outside', () => {
+    // A fat L: 10 × 4 along the bottom, 4 × 10 up the left. The vertex average (4.7, 4.7) lies
+    // outside; the point farthest from the walls is (2.5, 2.5) in the corner square, 2.1 m from
+    // the outer walls and from the inner corner (4, 4).
+    const l: Vec2[] = [
+      [0, 0],
+      [10, 0],
+      [10, 4],
+      [4, 4],
+      [4, 10],
+      [0, 10],
+    ];
+    const [x, z] = roomCenter(l);
+    expect(x).toBeCloseTo(2.5, 6);
+    expect(z).toBeCloseTo(2.5, 6);
+  });
 });

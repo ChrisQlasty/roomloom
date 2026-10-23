@@ -27,9 +27,15 @@ function sphereOf(bounds: THREE.Box3): { center: THREE.Vector3; radius: number }
 
 /**
  * The view orbit mode starts from: looking at the centre of `bounds` from the side of `from` (the
- * current eye), 30° up, far enough for the whole building to fit a `fovDeg` vertical field of view.
+ * current eye), 30° up, far enough for the whole building to fit a camera with a `fovDeg` vertical
+ * field of view and `aspect` (width / height), whichever of its two angles is narrower.
  */
-export function orbitStartView(bounds: THREE.Box3, from: Pose, fovDeg: number): OrbitView {
+export function orbitStartView(
+  bounds: THREE.Box3,
+  from: Pose,
+  fovDeg: number,
+  aspect = 1,
+): OrbitView {
   const { center, radius } = sphereOf(bounds);
   let dx = from.position[0] - center.x;
   let dz = from.position[2] - center.z;
@@ -39,7 +45,9 @@ export function orbitStartView(bounds: THREE.Box3, from: Pose, fovDeg: number): 
     [dx, dz] = [-fx, -fz];
   }
   const horizontal = Math.hypot(dx, dz);
-  const fit = radius / Math.sin(THREE.MathUtils.degToRad(fovDeg) / 2);
+  const halfV = THREE.MathUtils.degToRad(fovDeg) / 2;
+  const halfH = Math.atan(Math.tan(halfV) * aspect);
+  const fit = radius / Math.sin(Math.min(halfV, halfH));
   const distance = THREE.MathUtils.clamp(
     fit,
     radius * MIN_DISTANCE_FACTOR,
@@ -68,9 +76,10 @@ export function viewState(view: OrbitView): CameraState {
 
 /**
  * Orbit mode for the exterior: three's OrbitControls around the centre of the building's bounding
- * box, zoom limited relative to its size, and never below the ground. Panning (right-drag, or
- * Shift + drag) slides the orbit centre over the ground, at most {@link PAN_MARGIN_FACTOR} building
- * radii past the building. Re-entering orbit mode starts from the centre again.
+ * box, zoom limited relative to its size, and never below the ground. Panning (drag with the
+ * wheel pressed, right-drag, or Shift + drag) slides the orbit centre over the ground, at most
+ * {@link PAN_MARGIN_FACTOR} building radii past the building. Re-entering orbit mode starts from
+ * the centre again, at rest.
  */
 export class OrbitMode {
   readonly controls: OrbitControls;
@@ -86,6 +95,8 @@ export class OrbitMode {
     // Pan parallel to the ground, so the orbit centre keeps its height.
     this.controls.screenSpacePanning = false;
     this.controls.maxPolarAngle = THREE.MathUtils.degToRad(90 - MIN_ELEVATION_DEG);
+    // The scroll wheel zooms; dragging with it pressed pans (instead of zooming).
+    this.controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
   }
 
   /** Orbit around `bounds` (the building), with zoom limits from its size. */
@@ -101,7 +112,7 @@ export class OrbitMode {
   /** The view to fly to when entering orbit mode from the eye pose `from`. */
   startView(from: Pose): OrbitView {
     const camera = this.controls.object as THREE.PerspectiveCamera;
-    return orbitStartView(this.bounds, from, camera.fov);
+    return orbitStartView(this.bounds, from, camera.fov, camera.aspect);
   }
 
   /** Take over the camera, which must already be at a view returned by {@link startView}. */
@@ -111,9 +122,24 @@ export class OrbitMode {
     this.controls.update();
   }
 
-  /** Release the camera. */
+  /** Release the camera, dropping any momentum left from the last drag. */
   disable(): void {
-    this.controls.enabled = false;
+    const { controls } = this;
+    const camera = controls.object;
+    const [position, quaternion, target] = [
+      camera.position.clone(),
+      camera.quaternion.clone(),
+      controls.target.clone(),
+    ];
+    // Without damping, update() applies and clears the pending rotation, pan and zoom; then the
+    // camera is put back where it was.
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = true;
+    camera.position.copy(position);
+    camera.quaternion.copy(quaternion);
+    controls.target.copy(target);
+    controls.enabled = false;
   }
 
   /** Per frame while enabled: applies damping and keeps the panned centre near the building. */

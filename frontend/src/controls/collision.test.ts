@@ -67,14 +67,27 @@ describe('Colliders', () => {
     expect(colliders.resolveCapsule(capsuleAt(2, 0), 0.25)).toBe(false);
   });
 
-  it('pushes only sideways when asked to', () => {
+  it('pushes only sideways', () => {
     const colliders = new Colliders();
     colliders.addColliders('ledge', cube([0, 0, 0]));
     // The capsule's lower sphere sits on the ledge's top edge (at y 0.5, x 0.5).
     const segment = capsuleAt(0.6, 0, 0.6, 1.5);
-    colliders.resolveCapsule(segment, 0.25, true);
+    colliders.resolveCapsule(segment, 0.25);
     expect(segment.start.y).toBe(0.6);
     expect(segment.start.x).toBeGreaterThan(0.6);
+    expect(colliders.overlapsVertically(segment, 0.25)).toBe(false);
+  });
+
+  it('reports a ceiling the head reaches instead of pushing the capsule down', () => {
+    const colliders = new Colliders();
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(4, 4).rotateX(Math.PI / 2));
+    ceiling.position.y = 2;
+    colliders.addColliders('ceiling', ceiling);
+    const segment = capsuleAt(0, 0, 0.6, 1.9);
+    expect(colliders.resolveCapsule(segment, 0.25)).toBe(false);
+    expect(segment.end.y).toBe(1.9);
+    expect(colliders.overlapsVertically(segment, 0.25)).toBe(true);
+    expect(colliders.overlapsVertically(capsuleAt(0, 0, 0.6, 1.7), 0.25)).toBe(false);
   });
 
   it('finds the highest upward-facing ground under a disc', () => {

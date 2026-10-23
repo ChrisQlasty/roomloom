@@ -1,4 +1,4 @@
-import type { Vec2, Vec3 } from '../engine/build/geometry-utils';
+import { polygonArea, type Vec2, type Vec3 } from '../engine/build/geometry-utils';
 import { frameAxis, framePoint, wallFrame } from '../engine/build/walls';
 import type { Spawn } from '../types/project';
 import type { Room, Shell } from '../types/scene';
@@ -13,15 +13,6 @@ const INTERIOR_GRID = 24;
 export interface SpawnPose {
   position: Vec3;
   yawDeg: number;
-}
-
-function polygonArea(polygon: readonly Vec2[]): number {
-  let sum = 0;
-  polygon.forEach(([x0, z0], i) => {
-    const [x1, z1] = polygon[(i + 1) % polygon.length]!;
-    sum += x0 * z1 - x1 * z0;
-  });
-  return Math.abs(sum) / 2;
 }
 
 function contains(polygon: readonly Vec2[], [x, z]: Vec2): boolean {
@@ -45,8 +36,8 @@ function distanceToEdges(polygon: readonly Vec2[], [x, z]: Vec2): number {
 }
 
 /**
- * The centre of a room: the vertex average if that lies well inside, else the grid point
- * farthest from the walls (for concave rooms such as an L).
+ * The centre of a room: the vertex average if it lies inside and at least half as far from the
+ * walls as the grid point farthest from them, else that grid point (for concave rooms such as an L).
  */
 export function roomCenter(polygon: readonly Vec2[]): Vec2 {
   const n = polygon.length;
@@ -59,17 +50,17 @@ export function roomCenter(polygon: readonly Vec2[]): Vec2 {
   const [x0, z0] = [Math.min(...xs), Math.min(...zs)];
   const step = Math.max(Math.max(...xs) - x0, Math.max(...zs) - z0) / INTERIOR_GRID;
   let best = mean;
-  let bestDistance = contains(polygon, mean) ? distanceToEdges(polygon, mean) : -1;
+  let bestDistance = -1;
   for (let i = 0; i <= INTERIOR_GRID; i++) {
     for (let j = 0; j <= INTERIOR_GRID; j++) {
       const p: Vec2 = [x0 + i * step, z0 + j * step];
       if (!contains(polygon, p)) continue;
       const d = distanceToEdges(polygon, p);
-      // Keep the mean unless it is much closer to a wall than the best grid point.
-      if (d > bestDistance * 2) [best, bestDistance] = [p, d];
+      if (d > bestDistance) [best, bestDistance] = [p, d];
     }
   }
-  return best;
+  const meanDistance = contains(polygon, mean) ? distanceToEdges(polygon, mean) : -1;
+  return meanDistance * 2 >= bestDistance ? mean : best;
 }
 
 /** Just inside the first exterior door (by wall order), facing into the room; null if none. */

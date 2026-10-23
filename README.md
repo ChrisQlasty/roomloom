@@ -5,7 +5,7 @@ Use `RoomLoom` as the display name and `roomloom` for packages, folders and iden
 
 ## Current state
 
-The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03), the Miro importer (task T04), the 3D shell geometry (task T05) and the camera controls (task T06) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); only the developer pages use it so far. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Developer pages show a project's building in 3D (see [View the building shell](#view-the-building-shell)) and let you walk, fly and orbit through it (see [Walk through the building](#walk-through-the-building)). The minimap, the real renderer and the agent come in later tasks.
+The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03), the Miro importer (task T04), the 3D shell geometry (task T05) and the camera controls (task T06) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); only the developer pages use it so far. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Developer pages show a project's building in 3D (see [View the building shell](#view-the-building-shell)) and let you walk through it and orbit around it (see [Walk through the building](#walk-through-the-building)). The minimap, the real renderer and the agent come in later tasks.
 
 The scene document format is defined by the Pydantic models in `backend/app/schema/`. A hand-made example project, `projects/example-l-house/`, holds an L-shaped building with five rooms, a sunken gym reached by two steps, a flat roof, three objects and one photo pin. Tests use it as their fixture.
 
@@ -178,13 +178,11 @@ With `make dev` running, open http://localhost:5173/?debug=walk (add `&project=<
 |---|---|
 | Mouse | Look around (up and down limited to 85°) |
 | W A S D | Walk (4 m/s); Shift runs (9 m/s) |
-| F | Fly on or off: no gravity, Space rises, Ctrl sinks (4 m/s, Shift 10 m/s) |
-| C | While flying: collision off or on (fly through walls and windows) |
-| O | Orbit the building from outside: drag to turn, right-drag (two-finger click on a trackpad) or Shift + drag to pan, scroll to zoom. O again returns to where you were walking or flying |
+| O | Orbit the building from outside: drag to turn, drag with the scroll wheel pressed, right-drag (two-finger click on a trackpad) or Shift + drag to pan, scroll to zoom. O again returns to where you were walking |
 | K | Child eye height (1.25 m) or adult (1.75 m) |
 | Esc | Release the mouse |
 
-Your eyes are at 1.75 m (the body is 1.86 m tall); the view bobs slightly with each step while walking. Walls, window glass and ceilings stop you; steps and ledges up to 35 cm are climbed automatically, so the gym's steps work both ways. Flying has no gravity and no bob, you move up and down freely, and C lets you pass through walls and windows. Panning in orbit mode stops half a building's size past the building; pressing O again later starts from the building's centre. Outside the building there is flat ground at entrance level. The box in the top-left corner shows the mode, frame rate, draw calls and the eye position and direction. Keys are ignored while a text field has focus.
+Your eyes are at 1.75 m (the body is 1.86 m tall); the view bobs slightly with each step while walking. Walls, window glass and ceilings stop you (you do not step up where your head would hit a ceiling or lintel); steps and ledges up to 35 cm are climbed automatically, so the gym's steps work both ways. There is no fly mode; use orbit (O) to see the building from above. Panning in orbit mode stops half a building's size past the building; pressing O again later starts from the building's centre, at rest. Ctrl, Cmd and Alt shortcuts are left to the browser. Outside the building there is flat ground at entrance level. The box in the top-left corner shows the mode, frame rate, draw calls and the eye position and direction. Keys are ignored while a text field has focus.
 
 ## Scene conventions
 

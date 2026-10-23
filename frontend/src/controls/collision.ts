@@ -10,6 +10,11 @@ const RESOLVE_PASSES = 2;
 const GROUND_RING_SAMPLES = 8;
 const GROUND_RING_FRACTION = 0.9;
 
+/** Whether a push points more up or down than sideways (more than 45° from horizontal). */
+function mostlyVertical(push: THREE.Vector3): boolean {
+  return push.y * push.y > push.x * push.x + push.z * push.z;
+}
+
 interface ColliderGroup {
   bvh: MeshBVH;
   box: THREE.Box3;
@@ -89,30 +94,41 @@ export class Colliders {
   }
 
   /**
-   * Move the capsule `segment` (its axis) with `radius` out of every collider it overlaps, in place.
-   * With `horizontal`, only the horizontal part of each push is applied (walking: floors and steps
-   * are handled by {@link groundHeight}). Returns whether anything was hit.
+   * Move the capsule `segment` (its axis) with `radius` sideways out of every collider it overlaps,
+   * in place. Floors and steps are left to {@link groundHeight}; overlaps that only a vertical push
+   * would resolve are skipped (see {@link overlapsVertically}). Returns whether anything was hit.
    */
-  resolveCapsule(segment: THREE.Line3, radius: number, horizontal = false): boolean {
+  resolveCapsule(segment: THREE.Line3, radius: number): boolean {
     let hit = false;
     for (let pass = 0; pass < RESOLVE_PASSES; pass++) {
-      const box = this.queryBox.makeEmpty().expandByPoint(segment.start).expandByPoint(segment.end);
-      box.expandByScalar(radius);
       let moved = false;
-      for (const group of this.groups.values()) {
-        if (!group.box.intersectsBox(box)) continue;
-        group.bvh.shapecast({
-          intersectsBounds: (bounds) => bounds.intersectsBox(box),
-          intersectsTriangle: (tri: ExtendedTriangle) => {
-            if (this.pushOut(tri, segment, radius, horizontal)) moved = true;
-            return false;
-          },
-        });
-      }
+      this.forEachNear(segment, radius, (tri) => {
+        const push = this.pushOut(tri, segment, radius);
+        if (!push || mostlyVertical(push) || push.lengthSq() < 1e-12) return false;
+        push.y = 0;
+        segment.start.add(push);
+        segment.end.add(push);
+        moved = true;
+        return false;
+      });
       if (!moved) break;
       hit = true;
     }
     return hit;
+  }
+
+  /**
+   * Whether the capsule overlaps a surface above or below its axis, which a sideways push cannot
+   * resolve: a ceiling or lintel the head reaches, or a slab across the body.
+   */
+  overlapsVertically(segment: THREE.Line3, radius: number): boolean {
+    let found = false;
+    this.forEachNear(segment, radius, (tri) => {
+      const push = this.pushOut(tri, segment, radius);
+      found = push !== null && mostlyVertical(push);
+      return found;
+    });
+    return found;
   }
 
   /**
@@ -140,23 +156,41 @@ export class Colliders {
     return best;
   }
 
-  /** Push `segment` away from `tri` if the capsule overlaps it; returns whether it moved. */
+  /**
+   * Call `visit` with every triangle near the capsule, until it returns true. The query box is
+   * taken once, so `visit` may move the segment.
+   */
+  private forEachNear(
+    segment: THREE.Line3,
+    radius: number,
+    visit: (tri: ExtendedTriangle) => boolean,
+  ): void {
+    const box = this.queryBox.makeEmpty().expandByPoint(segment.start).expandByPoint(segment.end);
+    box.expandByScalar(radius);
+    for (const group of this.groups.values()) {
+      if (!group.box.intersectsBox(box)) continue;
+      const stopped = group.bvh.shapecast({
+        intersectsBounds: (bounds) => bounds.intersectsBox(box),
+        intersectsTriangle: visit,
+      });
+      if (stopped) return;
+    }
+  }
+
+  /**
+   * The push that moves `segment` out of `tri` to `radius` (a shared scratch vector), or null if
+   * the capsule does not overlap it.
+   */
   private pushOut(
     tri: ExtendedTriangle,
     segment: THREE.Line3,
     radius: number,
-    horizontal: boolean,
-  ): boolean {
+  ): THREE.Vector3 | null {
     const distance = tri.closestPointToSegment(segment, this.triPoint, this.capsulePoint);
-    if (distance >= radius) return false;
+    if (distance >= radius) return null;
     const push = this.push;
     if (distance > 1e-9) push.subVectors(this.capsulePoint, this.triPoint).divideScalar(distance);
     else tri.getNormal(push);
-    push.multiplyScalar(radius - distance);
-    if (horizontal) push.y = 0;
-    if (push.lengthSq() < 1e-12) return false;
-    segment.start.add(push);
-    segment.end.add(push);
-    return true;
+    return push.multiplyScalar(radius - distance);
   }
 }

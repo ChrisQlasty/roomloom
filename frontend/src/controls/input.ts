@@ -60,10 +60,10 @@ export class KeyboardInput {
 
   private keyDown(event: KeyboardEvent): void {
     if (isTextEntry(event.target)) return;
-    // Cmd/Ctrl/Alt shortcuts belong to the browser; Ctrl alone is the fly-down key.
-    if (event.metaKey || event.altKey) return;
+    // Cmd/Ctrl/Alt shortcuts belong to the browser.
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
     this.held.add(event.code);
-    if (event.repeat || event.ctrlKey) return;
+    if (event.repeat) return;
     for (const handler of this.pressHandlers) handler(event.code);
   }
 }
