@@ -13,8 +13,10 @@ const DEFAULT_PROJECT = 'example-l-house';
 const MAX_PIXEL_RATIO = 2;
 /** How far the ground reaches past the building, in metres. */
 const GROUND_MARGIN = 200;
-const HELP =
-  'click: look around · WASD move · Shift run · F fly (Space/Ctrl up/down) · C collision (fly) · O orbit · K child view · Esc release';
+const HELP = [
+  'click: look around · WASD move · Shift run · F fly (Space/Ctrl up/down) · C collision (fly)',
+  'O orbit (drag turn, right/Shift-drag pan, scroll zoom) · K child view · Esc release',
+].join('\n');
 
 function describe(
   mode: ControlEvents['mode'],
