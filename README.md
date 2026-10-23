@@ -5,7 +5,7 @@ Use `RoomLoom` as the display name and `roomloom` for packages, folders and iden
 
 ## Current state
 
-The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03), the Miro importer (task T04) and the 3D shell geometry (task T05) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); the browser does not use it yet. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. A developer page shows a project's building in 3D (see [View the building shell](#view-the-building-shell)). Walking, the minimap and the agent come in later tasks.
+The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03), the Miro importer (task T04), the 3D shell geometry (task T05) and the camera controls (task T06) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); only the developer pages use it so far. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Developer pages show a project's building in 3D (see [View the building shell](#view-the-building-shell)) and let you walk, fly and orbit through it (see [Walk through the building](#walk-through-the-building)). The minimap, the real renderer and the agent come in later tasks.
 
 The scene document format is defined by the Pydantic models in `backend/app/schema/`. A hand-made example project, `projects/example-l-house/`, holds an L-shaped building with five rooms, a sunken gym reached by two steps, a flat roof, three objects and one photo pin. Tests use it as their fixture.
 
@@ -169,6 +169,22 @@ URL parameters (all optional):
 | `look` | `look=7.8,0,10` | Point the camera looks at. |
 
 Ceilings face down and walls face outwards, so from above you see into the rooms through the ceilings. Lighting is deliberately plain on this page; the real renderer comes later.
+
+## Walk through the building
+
+With `make dev` running, open http://localhost:5173/?debug=walk (add `&project=<slug>` for another project). You start at the project's `spawn` from `project.json`; without one, just inside the first exterior door, or else in the middle of the largest room. Click the 3D view to capture the mouse, then:
+
+| Key | Action |
+|---|---|
+| Mouse | Look around (up and down limited to 85°) |
+| W A S D | Walk; Shift runs |
+| F | Fly on or off: no gravity, Space rises, Ctrl sinks |
+| C | While flying: collision off or on (fly through walls and windows) |
+| O | Orbit the building from outside (drag to turn, scroll to zoom); O again returns to where you were walking or flying |
+| K | Child eye height (1.25 m) or adult (1.6 m) |
+| Esc | Release the mouse |
+
+Walls, window glass and ceilings stop you; steps and ledges up to 35 cm are climbed automatically, so the gym's steps work both ways. Outside the building there is flat ground at entrance level. The box in the top-left corner shows the mode, frame rate, draw calls and the eye position and direction. Keys are ignored while a text field has focus.
 
 ## Scene conventions
 
