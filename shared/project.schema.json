@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "Spawn": {
+      "additionalProperties": false,
+      "description": "Where the visitor starts when the project opens.",
+      "properties": {
+        "position": {
+          "description": "Feet position in world metres.",
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "tsType": "[number, number, number]",
+          "type": "array"
+        },
+        "yaw_deg": {
+          "default": 0.0,
+          "description": "View direction, 0 north, clockwise.",
+          "exclusiveMaximum": 360,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "position",
+        "yaw_deg"
+      ],
+      "title": "Spawn",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One project: a building, its profile and how the agent should talk about it.",
+  "properties": {
+    "id": {
+      "description": "Stable project id.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "slug": {
+      "description": "Folder name and URL part.",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "name": {
+      "description": "Display name.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "description": "Short description for the project picker.",
+      "type": "string"
+    },
+    "profile_prompt": {
+      "default": "",
+      "description": "Domain flavour for the agent, e.g. 'a 1980s primary school'.",
+      "type": "string"
+    },
+    "language": {
+      "default": "en",
+      "description": "ISO 639-1 language code.",
+      "pattern": "^[a-z]{2}$",
+      "type": "string"
+    },
+    "created_at": {
+      "description": "Creation time (UTC).",
+      "format": "date-time",
+      "type": "string"
+    },
+    "spawn": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Spawn"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Start pose; defaults to the entrance."
+    }
+  },
+  "required": [
+    "id",
+    "slug",
+    "name",
+    "description",
+    "profile_prompt",
+    "language",
+    "created_at",
+    "spawn"
+  ],
+  "title": "Project",
+  "type": "object"
+}

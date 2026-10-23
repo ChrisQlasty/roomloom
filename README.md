@@ -74,10 +74,11 @@ The Pydantic models in `backend/app/schema/` are the single source of truth for 
 make types
 ```
 
-This rewrites three generated files (never edit them by hand):
+This rewrites five generated files (never edit them by hand):
 - `shared/scene.schema.json`: the JSON Schema of a scene
+- `shared/project.schema.json`: the JSON Schema of `project.json`
 - `shared/ops.schema.json`: a placeholder until the ops engine exists
-- `frontend/src/types/scene.ts`: TypeScript types, generated from the schema with `json-schema-to-typescript`
+- `frontend/src/types/scene.ts` and `frontend/src/types/project.ts`: TypeScript types, generated from the schemas with `json-schema-to-typescript`
 
 Running it twice gives no diff. `make test` fails if the shared schemas are out of date.
 

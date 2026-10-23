@@ -28,7 +28,7 @@ frontend/src/
   controls/             walk-fly, orbit, collision
   ui/                   minimap, hud, side-panel/{chat,photos,history,backlog}, project-picker
   net/                  REST client, websocket
-  types/scene.ts        GENERATED, do not edit
+  types/scene.ts        GENERATED, do not edit (also types/project.ts)
 shared/
   scene.schema.json     GENERATED, do not edit
   prefabs.json          GENERATED from backend registry
@@ -41,7 +41,7 @@ plan/                   architecture, conventions, limitations, tasks
 - `make dev`: backend on :8000 and Vite on :5173 (proxying `/api` and the websocket).
 - `make test`: pytest and vitest.
 - Linting is automatic: a Claude Code PostToolUse hook (`.claude/hooks/lint-edited.sh`) runs ruff on edited backend `.py` files and prettier/eslint/tsc on edited frontend files, and reports problems back. Edit files with the Write/Edit tools so the hook runs; no manual lint step.
-- `make types`: regenerate `shared/*.json` and `frontend/src/types/scene.ts` from Pydantic.
+- `make types`: regenerate `shared/*.json` and `frontend/src/types/{scene,project}.ts` from Pydantic.
 
 ## Local setup and workflow
 - **Never use git worktrees** (no `EnterWorktree`, no `git worktree add`). Work in the main checkout on a feature branch. `plan/` is git-ignored, so it exists only there. `.claude/settings.json` sets `"worktree": {"bgIsolation": "none"}` so background sessions don't force worktrees either.
