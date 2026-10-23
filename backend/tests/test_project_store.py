@@ -133,6 +133,24 @@ def test_failed_create_in_existing_folder_keeps_other_files(
     assert sorted(p.name for p in (projects_root / "new-house").iterdir()) == ["import"]
 
 
+@pytest.mark.parametrize("leftover", ["scene.json", "history"])
+def test_create_refuses_leftover_project_data(
+    store: ProjectStore, projects_root: Path, leftover: str
+) -> None:
+    folder = projects_root / "new-house"
+    (folder / "history").mkdir(parents=True)
+    (folder / "history" / "index.jsonl").write_text("old\n")
+    (folder / "scene.json").write_text("old")
+    if leftover == "history":
+        (folder / "scene.json").unlink()
+    with pytest.raises(ProjectExists):
+        asyncio.run(store.create(new_project(), store.load_scene(SLUG)))
+    assert (folder / "history" / "index.jsonl").read_text() == "old\n"
+    assert not (folder / "project.json").exists()
+    if leftover == "scene.json":
+        assert (folder / "scene.json").read_text() == "old"
+
+
 def test_reimport_adds_a_change_set_and_keeps_history(store: ProjectStore) -> None:
     scene = store.load_scene(SLUG)
     scene.notes = []

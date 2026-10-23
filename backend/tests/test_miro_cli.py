@@ -90,6 +90,52 @@ def test_failed_import_writes_the_report_only(
     assert from_json("two_scales", "broken", "--dry-run") == 1
 
 
+def test_folder_with_a_scene_but_no_project_json_is_left_alone(
+    projects: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = projects / "l-house"
+    (folder / "history").mkdir(parents=True)
+    (folder / "scene.json").write_text("old")
+    assert from_json("l_house") == 1
+    assert "no project.json" in capsys.readouterr().err
+    assert (folder / "scene.json").read_text() == "old" and (folder / "history").is_dir()
+    assert not (folder / "project.json").exists()
+
+
+def test_failed_or_dry_reimport_keeps_the_record_of_the_current_shell(projects: Path) -> None:
+    assert from_json("l_house") == 0
+    folder = projects / "l-house"
+    current = folder / "import"
+    report = (current / "import_report.md").read_text()
+    raw = (current / "miro_raw.json").read_text()
+
+    assert from_json("two_scales", "l-house", "--force") == 1
+    assert from_json("two_rooms_door", "l-house", "--dry-run") == 0
+    assert (current / "import_report.md").read_text() == report
+    assert (current / "miro_raw.json").read_text() == raw
+    attempt = (current / "attempt" / "import_report.md").read_text()
+    assert "two_rooms_door.json" in attempt and "l_house.json" in report
+    assert len(ProjectStore(projects).load_scene("l-house").shell.rooms) == 5
+
+    assert from_json("two_rooms_door", "l-house", "--force") == 0
+    assert not (current / "attempt").exists()
+    assert "**Import failed.**" not in (current / "import_report.md").read_text()
+    reimported = json.loads((current / "miro_raw.json").read_text())
+    assert reimported["items"] == load_raw(FIXTURES / "two_rooms_door.json")["items"]
+
+
+def test_failed_reimport_report_is_in_the_attempt_folder(
+    projects: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert from_json("l_house") == 0
+    capsys.readouterr()
+    assert from_json("two_scales", "l-house", "--force") == 1
+    err = capsys.readouterr().err
+    attempt = projects / "l-house" / "import" / "attempt" / "import_report.md"
+    assert f"Details: {attempt}" in err
+    assert "**Import failed.**" in attempt.read_text()
+
+
 def test_llm_notes_use_claude(projects: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[list[str]] = []
 

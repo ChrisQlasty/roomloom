@@ -34,18 +34,37 @@ def shell(parts: list[Part], names: list[str]) -> tuple[list, list, list[WallSeg
 
 def test_snap_closes_gaps_and_small_overlaps_onto_the_larger_room() -> None:
     parts = [rect(0, 0, 0, 10, 5), rect(1, 0, 5.1, 4, 8), rect(2, 4, 4.95, 10, 8)]
-    snapped, moves = snap_parts(parts, 0.15)
+    snapped, moves, misses = snap_parts(parts, 0.15)
     assert snapped[0].corners == parts[0].corners  # the largest rectangle never moves
     ys = {round(y, 6) for p in snapped[1:] for _, y in p.corners}
     assert ys == {5.0, 8.0}
     assert {(m.room, m.other_room) for m in moves} == {(1, 0), (2, 0)}
     assert max(m.distance for m in moves) == pytest.approx(0.1)
+    assert misses == []
 
 
 def test_snap_leaves_gaps_beyond_the_tolerance() -> None:
     parts = [rect(0, 0, 0, 10, 5), rect(1, 0, 5.3, 10, 8)]
-    snapped, moves = snap_parts(parts, 0.15)
-    assert snapped[1].corners == parts[1].corners and moves == []
+    snapped, moves, misses = snap_parts(parts, 0.15)
+    assert snapped[1].corners == parts[1].corners and moves == [] and misses == []
+
+
+def test_snap_keeps_a_part_thinner_than_the_tolerance() -> None:
+    parts = [rect(0, 0, 0, 5, 4), rect(1, 5.0, 0, 5.1, 4)]
+    snapped, _, misses = snap_parts(parts, 0.15)
+    assert ShapelyPolygon(snapped[1].corners).area == pytest.approx(0.4)
+    assert [(m.room, m.other_room, round(m.distance, 6)) for m in misses] == [(0, 1, 0.1)]
+
+
+def test_snap_reports_edges_it_cannot_line_up() -> None:
+    # Hall's edge at x=5.08 moves onto the big room's x=5.00; Store's at 5.16 is too far for that
+    parts = [rect(0, 0, 0, 5, 10), rect(1, 5.08, 0, 8, 4), rect(2, 5.16, 4, 7, 6)]
+    snapped, moves, misses = snap_parts(parts, 0.15)
+    assert {(m.room, m.other_room) for m in moves} == {(1, 0)}
+    assert min(x for x, _ in snapped[1].corners) == pytest.approx(5.0)
+    assert snapped[2].corners == parts[2].corners
+    assert {(m.room, m.other_room) for m in misses} == {(1, 2)}
+    assert max(m.distance for m in misses) == pytest.approx(0.16)
 
 
 def test_snap_works_for_rotated_rectangles() -> None:
@@ -55,7 +74,7 @@ def test_snap_works_for_rotated_rectangles() -> None:
         pts = [(x0, 0.0), (x1, 0.0), (x1, 3.0), (x0, 3.0)]
         return Part(room, [(x * c - y * s, x * s + y * c) for x, y in pts])
 
-    snapped, moves = snap_parts([turned(0, 0, 4), turned(1, 4.1, 8)], 0.15)
+    snapped, moves, _ = snap_parts([turned(0, 0, 4), turned(1, 4.1, 8)], 0.15)
     assert [round(m.distance, 6) for m in moves] == [0.1]
     union = unary_union([ShapelyPolygon(p.corners) for p in snapped])
     assert isinstance(union, ShapelyPolygon) and union.area == pytest.approx(
@@ -131,3 +150,9 @@ def test_door_at_a_corner_picks_the_wall_it_mostly_crosses() -> None:
     att = attach_opening([(-0.05, -0.1), (1.0, -0.1), (1.0, 0.1), (-0.05, 0.1)], walls)
     assert att is not None and att.wall == 0 and att.offset == 0.0
     assert att.width == pytest.approx(1.0)
+
+
+def test_room_that_degenerates_on_the_mm_grid_is_an_import_error() -> None:
+    sliver = ShapelyPolygon([(0, 0), (1, 0), (1, 0.0004), (0, 0.0004)])
+    with pytest.raises(MiroImportError, match='Room "Sliver" has an invalid shape'):
+        room_rings([sliver], ["Sliver"])

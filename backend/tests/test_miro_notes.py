@@ -33,12 +33,33 @@ from app.importers.miro.notes import (
         ("Hall -- Bartek Nowak", {"rest": "Hall", "author": "Bartek Nowak"}),
         ("level -0.3", {"author": None}),
         ("two steps down, floor lower", {"rest": "two steps down, floor lower", "steps": None}),
+        ("Hall h=3.2, #gym", {"rest": "Hall", "tags": ["gym"], "h": 3.2}),
+        ("level -0.3, steps 2", {"rest": "", "level": -0.3, "steps": 2}),
+        ("sill=0.9, h=1.4", {"sill": 0.9, "h": 1.4}),
+        ("Hall h=3.2.", {"rest": "Hall", "h": 3.2}),
+        ("h=3,5x", {"h": None}),
+        ("h=3.2.1", {"h": None}),
     ],
 )
 def test_parse_text(text: str, fields: dict[str, Any]) -> None:
     parsed = parse_text(text)
     for name, value in fields.items():
         assert getattr(parsed, name) == value, name
+
+
+@pytest.mark.parametrize(
+    ("text", "rest"),
+    [
+        ("Kitchen – dining", "Kitchen – dining"),
+        ("Level 2 Office", "Level 2 Office"),
+        ("Gym 2 steps up", "Gym 2 steps up"),
+        ("Room 3A #classroom h=3.2", "Room 3A"),
+    ],
+)
+def test_room_labels_only_read_tags_and_height(text: str, rest: str) -> None:
+    parsed = parse_text(text, room_label=True)
+    assert parsed.rest == rest
+    assert (parsed.level, parsed.steps, parsed.author) == (None, None, None)
 
 
 def test_split_author_keeps_the_rest_of_the_text() -> None:

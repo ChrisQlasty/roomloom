@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 _SLUG_RE = re.compile(SLUG_PATTERN)
 _THUMBNAIL = "thumbnail.jpg"
+_PROJECT_DATA = ("project.json", "scene.json", "history")
 
 
 class ProjectNotFound(LookupError):
@@ -41,6 +42,11 @@ class ProjectSummary(Project):
 def is_valid_slug(slug: str) -> bool:
     """True for lowercase kebab-case slugs such as `old-school`; rules out any path trickery."""
     return _SLUG_RE.fullmatch(slug) is not None
+
+
+def holds_project_data(folder: Path) -> bool:
+    """True if `folder` has a project.json, scene.json or history/, even an incomplete set."""
+    return any((folder / name).exists() for name in _PROJECT_DATA)
 
 
 def _write_project(folder: Path, project: Project) -> None:
@@ -122,12 +128,12 @@ class ProjectStore:
     async def create(self, project: Project, scene: Scene) -> ChangeSetMeta:
         """Write a new project and commit its scene as change set 1, "Imported".
 
-        Raises `ProjectExists` if the folder already holds a project.json. A folder without
-        one (e.g. only the importer's `import/` files) is reused. On failure nothing this call
-        wrote is left behind.
+        Raises `ProjectExists` if the folder already holds project data (project.json,
+        scene.json or history/). A folder with other files only (e.g. the importer's `import/`
+        files) is reused. On failure nothing this call wrote is left behind.
         """
         folder = self.root / project.slug
-        if (folder / "project.json").exists():
+        if holds_project_data(folder):
             raise ProjectExists(project.slug)
         existed = folder.is_dir()
         folder.mkdir(parents=True, exist_ok=True)
@@ -135,7 +141,7 @@ class ProjectStore:
             _write_project(folder, project)
             return await self.history.commit(project.slug, scene, BASELINE_DESCRIPTION, "import")
         except BaseException:
-            if existed:
+            if existed:  # none of these existed before this call
                 for name in ("project.json", "scene.json"):
                     (folder / name).unlink(missing_ok=True)
                 shutil.rmtree(folder / "history", ignore_errors=True)

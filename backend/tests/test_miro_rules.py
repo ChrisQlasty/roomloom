@@ -103,6 +103,22 @@ def test_level_problems_are_reported() -> None:
     assert (tr.steps, tr.rise_total, tr.host_room_id) == (2, 0.3, "r_hall")
 
 
+def test_steps_note_touching_a_door_beats_one_in_the_room() -> None:
+    report = run(
+        *TWO_ROOMS,
+        rect(3.9, 1, 4.1, 2, "", DOOR),
+        sticky(7, 1, "level -0.3"),
+        sticky(6, 3, "steps 3"),  # in the gym; its nearest door is the same one
+        sticky(3.9, 1.5, "steps 2"),  # touches the door
+    )
+    (tr,) = scene(report).shell.transitions
+    assert tr.steps == 2
+    assert warnings(report, "Levels and steps") == [
+        'Steps notes "steps 3" and "steps 2" both point at door op_hall_gym_door (Hall ↔ Gym); '
+        'used "steps 2".'
+    ]
+
+
 def test_steps_on_level_floors_are_ignored() -> None:
     report = run(*TWO_ROOMS, rect(3.9, 1, 4.1, 2, "", DOOR), sticky(3.9, 1.5, "steps 2"))
     assert scene(report).shell.transitions == []
@@ -142,6 +158,22 @@ def test_opening_problems_are_reported() -> None:
     assert kinds == ["door", "window", "window"]
 
 
+def test_heights_and_sills_out_of_range_fall_back_to_the_defaults() -> None:
+    report = run(
+        rect(0, 0, 4, 4, "Hall h=0"),
+        rect(-0.1, 1, 0.1, 2, "h=0", DOOR),
+        rect(1, -0.1, 2, 0.1, "sill=-0.1", WINDOW),
+    )
+    defaults = ImportConfig().defaults
+    ops = {op.kind: op for w in scene(report).shell.walls for op in w.openings}
+    assert ops["door"].height == defaults.door.height
+    assert ops["window"].sill == defaults.window.sill
+    assert scene(report).shell.rooms[0].ceiling_height == defaults.ceiling_height
+    texts = " ".join(warnings(report, "Openings"))
+    assert "h=0 is not a height" in texts and "sill=-0.1 is below the floor" in texts
+    assert warnings(report, "Rooms") == ['"Hall": h=0 is not a ceiling height; ignored.']
+
+
 def test_door_past_a_wall_end_is_cut() -> None:
     report = run(rect(0, 0, 4, 4, "Hall"), rect(3.5, 3.9, 4.5, 4.1, "", DOOR))
     (op,) = [op for w in scene(report).shell.walls for op in w.openings]
@@ -160,6 +192,35 @@ def test_room_names_from_text_items_and_unnamed_rooms() -> None:
     assert [(r.name, r.tags) for r in rooms] == [("Kitchen", ["kitchen"]), ("Unnamed room 1", [])]
     assert any("no name" in t for t in warnings(report, "Rooms"))
     assert [i.reason for i in report.ignored] == [TEXT_NOT_USED]
+
+
+def test_room_labels_keep_dashes_and_level_words() -> None:
+    report = run(
+        rect(0, 0, 4, 4, "Kitchen – dining"),
+        rect(4, 0, 8, 4, "Kitchen – pantry"),
+        rect(0, 4, 4, 8, "Level 2 Office"),
+        rect(4, 4, 8, 8, "Hall h=3.2, #gym"),
+    )
+    rooms = [(r.name, r.tags, r.ceiling_height) for r in scene(report).shell.rooms]
+    assert rooms == [
+        ("Kitchen – dining", [], 2.6),
+        ("Kitchen – pantry", [], 2.6),
+        ("Level 2 Office", [], 2.6),
+        ("Hall", ["gym"], 3.2),
+    ]
+
+
+def test_building_notes_link_short_room_names_only_when_unambiguous() -> None:
+    report = run(
+        rect(0, 0, 4, 4, "Hall"),
+        rect(4, 0, 8, 4, "A"),
+        rect(8, 0, 10, 4, "WC"),
+        sticky(12, 12, "a draught in the hall; the wc is cold", "yellow"),
+        sticky(14, 12, "WC tiles", "yellow"),
+    )
+    s = scene(report)
+    names = {r.id: r.name for r in s.shell.rooms}
+    assert [[names[i] for i in n.room_ids] for n in s.notes] == [["Hall"], ["WC"]]
 
 
 def test_memory_outside_rooms_becomes_a_building_note() -> None:

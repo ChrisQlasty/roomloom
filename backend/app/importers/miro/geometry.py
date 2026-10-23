@@ -15,10 +15,8 @@ import shapely
 from shapely.geometry import LineString, MultiPolygon
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from app.geometry.polygon import normalise_polygon
+from app.geometry.polygon import Point, normalise_polygon
 from app.importers.miro import MiroImportError
-
-Point = tuple[float, float]
 
 GRID = 0.001  # snap-rounding grid for boolean operations: 1 mm
 VERTEX_MERGE = 0.002  # vertices closer than this are the same point
@@ -44,6 +42,16 @@ class Part:
 @dataclass(frozen=True)
 class SnapMove:
     """A rectangle edge of `room` moved by `distance` metres to line up with `other_room`."""
+
+    room: int
+    other_room: int
+    distance: float
+
+
+@dataclass(frozen=True)
+class SnapMiss:
+    """Parallel edges of `room` and `other_room` were within the tolerance but are still
+    `distance` metres apart after snapping (snapping both would move one too far)."""
 
     room: int
     other_room: int
@@ -137,41 +145,59 @@ def _orientation(angle: float, reps: list[float]) -> int:
     return len(reps) - 1
 
 
-def _components(edges: list[_Edge], tol: float) -> list[list[int]]:
-    """Groups of parallel edges of different parts that lie within `tol` of each other."""
-    parent = list(range(len(edges)))
-
-    def find(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    for i, e in enumerate(edges):
-        for j in range(i + 1, len(edges)):
-            f = edges[j]
-            if e.part == f.part or e.orientation != f.orientation:
-                continue
-            gap = max(e.lo, f.lo) - min(e.hi, f.hi)
-            if abs(e.offset - f.offset) <= tol and gap <= tol:
-                parent[find(j)] = find(i)
-    groups: dict[int, list[int]] = {}
-    for i in range(len(edges)):
-        groups.setdefault(find(i), []).append(i)
-    return list(groups.values())
+def _linked(e: _Edge, f: _Edge, tol: float) -> bool:
+    """True for parallel edges of different parts that lie within `tol` of each other."""
+    if e.part == f.part or e.orientation != f.orientation:
+        return False
+    gap = max(e.lo, f.lo) - min(e.hi, f.hi)
+    return abs(e.offset - f.offset) <= tol and gap <= tol
 
 
-def snap_parts(parts: list[Part], tol: float) -> tuple[list[Part], list[SnapMove]]:
+def _groups(edges: list[_Edge], tol: float) -> list[list[int]]:
+    """Edges that snap onto one line; the first edge of each group is its anchor.
+
+    Parts are placed largest first. Each edge joins the group with the nearest anchor within
+    `tol` that holds an edge it is linked to; otherwise it starts a new group. A group takes at
+    most one edge per part, and a part's edges choose nearest first, so a part thinner than
+    `tol` keeps its width.
+    """
+    groups: list[list[int]] = []
+
+    def options(i: int) -> list[tuple[float, int]]:
+        """(distance to anchor, group index) of the groups edge `i` may join, nearest first."""
+        e = edges[i]
+        return sorted(
+            (abs(edges[g[0]].offset - e.offset), n)
+            for n, g in enumerate(groups)
+            if abs(edges[g[0]].offset - e.offset) <= tol
+            and any(_linked(e, edges[j], tol) for j in g)
+        )
+
+    for part in dict.fromkeys(e.part for e in edges):
+        choices = {i: options(i) for i, e in enumerate(edges) if e.part == part}
+        joined: set[int] = set()
+        for i in sorted(choices, key=lambda i: choices[i][0][0] if choices[i] else math.inf):
+            n = next((n for _, n in choices[i] if n not in joined), None)
+            if n is None:
+                groups.append([i])
+            else:
+                groups[n].append(i)
+                joined.add(n)
+    return groups
+
+
+def snap_parts(parts: list[Part], tol: float) -> tuple[list[Part], list[SnapMove], list[SnapMiss]]:
     """Line up rectangle edges that are parallel and within `tol` of each other.
 
     Each group of nearby parallel edges moves onto the edge of the largest rectangle in the
     group, so gaps and small overlaps close while rectangles stay rectangles. An edge never
-    moves further than `tol`.
+    moves further than `tol`; nearby edges of different rooms that therefore stay apart are
+    returned as misses.
     """
     order = sorted(range(len(parts)), key=lambda i: -parts[i].area)
     reps: list[float] = []
     edges: list[_Edge] = []
-    for i in order:  # largest first, so big rooms define the orientations and the targets
+    for i in order:  # largest first, so big rooms define the orientations and the anchors
         c = parts[i].corners
         for k in range(4):
             p, q = c[k], c[(k + 1) % 4]
@@ -183,24 +209,31 @@ def snap_parts(parts: list[Part], tol: float) -> tuple[list[Part], list[SnapMove
     offsets = {(e.part, e.index): (e.orientation, e.offset) for e in edges}
     moves: list[SnapMove] = []
     moved: set[int] = set()
-    for group in _components(edges, tol):
-        anchor = edges[group[0]]  # edges are in largest-part-first order
+    for group in _groups(edges, tol):
+        anchor = edges[group[0]]
         for idx in group[1:]:
             e = edges[idx]
             delta = abs(anchor.offset - e.offset)
-            if delta > tol:
-                continue
             offsets[(e.part, e.index)] = (e.orientation, anchor.offset)
             if delta > 0:
                 moved.add(e.part)
             room, other = parts[e.part].room, parts[anchor.part].room
             if delta > GRID and room != other:
                 moves.append(SnapMove(room, other, delta))
+    misses = []
+    for i, e in enumerate(edges):
+        for f in edges[i + 1 :]:
+            room, other = parts[e.part].room, parts[f.part].room
+            if room == other or not _linked(e, f, tol):
+                continue
+            apart = abs(offsets[(e.part, e.index)][1] - offsets[(f.part, f.index)][1])
+            if apart > GRID:
+                misses.append(SnapMiss(room, other, apart))
     snapped = [
         Part(p.room, _rebuild(i, p.corners, offsets, reps)) if i in moved else p
         for i, p in enumerate(parts)
     ]
-    return snapped, moves
+    return snapped, moves, misses
 
 
 def _rebuild(
@@ -299,9 +332,16 @@ def _drop_collinear(ring: list[Point]) -> list[Point]:
 
 
 def _ring(poly: ShapelyPolygon) -> list[Point]:
-    """Exterior ring as open, mm-rounded, CCW-from-above points without collinear vertices."""
-    coords = [_key((x, y)) for x, y in poly.exterior.coords[:-1]]
-    return normalise_polygon(_drop_collinear(coords))
+    """Exterior ring as open, mm-rounded points."""
+    return [_key((x, y)) for x, y in poly.exterior.coords[:-1]]
+
+
+def _clean(ring: list[Point], what: str) -> list[Point]:
+    """`ring` without collinear vertices, CCW from above; MiroImportError if it degenerates."""
+    try:
+        return normalise_polygon(_drop_collinear(ring))
+    except ValueError as e:
+        raise MiroImportError(f"{what} has an invalid shape after cleaning: {e}") from e
 
 
 def _merge_vertices(rings: list[list[Point]]) -> list[list[Point]]:
@@ -331,13 +371,7 @@ def _merge_vertices(rings: list[list[Point]]) -> list[list[Point]]:
 def room_rings(rooms: list[ShapelyPolygon], names: Sequence[str]) -> list[list[Point]]:
     """Final room polygons: shared corners merged, collinear points removed, CCW from above."""
     rings = _merge_vertices([_ring(r) for r in rooms])
-    out = []
-    for ring, name in zip(rings, names, strict=True):
-        try:
-            out.append(normalise_polygon(_drop_collinear(ring)))
-        except ValueError as e:
-            raise MiroImportError(f'Room "{name}" has an invalid shape after cleaning: {e}') from e
-    return out
+    return [_clean(ring, f'Room "{name}"') for ring, name in zip(rings, names, strict=True)]
 
 
 def outline_of(rings: list[list[Point]], names: Sequence[str]) -> list[Point]:
@@ -357,7 +391,7 @@ def outline_of(rings: list[list[Point]], names: Sequence[str]) -> list[Point]:
             + " | ".join(groups)
             + ". Close the gaps (only gaps up to the snap tolerance are closed automatically)."
         )
-    return _ring(_single_polygon(union, "The building outline"))
+    return _clean(_ring(_single_polygon(union, "The building outline")), "The building outline")
 
 
 # --- walls ---

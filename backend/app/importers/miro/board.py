@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-Point = tuple[float, float]
+from app.geometry.polygon import Point
 
 
 @dataclass(frozen=True)

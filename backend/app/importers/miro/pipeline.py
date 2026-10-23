@@ -15,6 +15,7 @@ from app.importers.miro.drafts import OpeningDraft, RoomDraft
 from app.importers.miro.fetch import RawBoard
 from app.importers.miro.geometry import (
     Part,
+    SnapMiss,
     SnapMove,
     WallSegment,
     attach_opening,
@@ -36,7 +37,7 @@ from app.importers.miro.report import ImportReport
 from app.schema.defaults import default_materials, default_roof
 from app.schema.ids import new_id
 from app.schema.scene import Note, Scene
-from app.schema.shell import Opening, Room, Shell, Wall, WallThickness
+from app.schema.shell import Opening, Room, Shell, Transition, Wall, WallThickness
 
 TEXT_NOT_USED = "text in the plan that does not name an unnamed room"
 COMPASS = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
@@ -96,7 +97,7 @@ def _room_drafts(found: Classified, report: ImportReport) -> list[RoomDraft]:
             if label is not None:
                 texts.remove(label)
                 text = label.text
-        parsed = parse_text(text)
+        parsed = parse_text(text, room_label=True)
         name = " ".join(parsed.rest.split())
         if not name:
             unnamed += 1
@@ -104,7 +105,9 @@ def _room_drafts(found: Classified, report: ImportReport) -> list[RoomDraft]:
         draft = drafts.setdefault(name.casefold(), RoomDraft(name))
         draft.parts.append(part)
         draft.tags += [t for t in parsed.tags if t not in draft.tags]
-        if parsed.h is not None:
+        if parsed.h is not None and parsed.h <= 0:
+            report.warn("Rooms", f'"{name}": h={parsed.h:g} is not a ceiling height; ignored.')
+        elif parsed.h is not None:
             if draft.ceiling is not None and abs(draft.ceiling - parsed.h) > 1e-6:
                 report.warn("Rooms", f'"{name}" has two ceiling heights; used the larger one.')
             draft.ceiling = max(draft.ceiling or 0.0, parsed.h)
@@ -129,16 +132,30 @@ def _plan_transform(drafts: list[RoomDraft], scale: float) -> Callable[[Point], 
     return lambda p: (p[0] * scale - ox, p[1] * scale - oy)
 
 
-def _snap_warnings(moves: list[SnapMove], drafts: list[RoomDraft], report: ImportReport) -> None:
+def _worst(found: list[SnapMove] | list[SnapMiss]) -> list[tuple[int, int, float]]:
+    """Largest distance per pair of rooms, in room order."""
     worst: dict[tuple[int, int], float] = {}
-    for move in moves:
-        key = (min(move.room, move.other_room), max(move.room, move.other_room))
-        worst[key] = max(worst.get(key, 0.0), move.distance)
-    for (a, b), distance in sorted(worst.items()):
+    for f in found:
+        key = (min(f.room, f.other_room), max(f.room, f.other_room))
+        worst[key] = max(worst.get(key, 0.0), f.distance)
+    return [(a, b, d) for (a, b), d in sorted(worst.items())]
+
+
+def _snap_warnings(
+    moves: list[SnapMove], misses: list[SnapMiss], drafts: list[RoomDraft], report: ImportReport
+) -> None:
+    for a, b, distance in _worst(moves):
         report.warn(
             "Snapped gaps",
             f'Closed a gap or overlap of up to {distance:.2f} m between "{drafts[a].name}" and '
             f'"{drafts[b].name}".',
+        )
+    for a, b, distance in _worst(misses):
+        report.warn(
+            "Snapped gaps",
+            f'Edges of "{drafts[a].name}" and "{drafts[b].name}" are still {distance:.2f} m '
+            "apart: lining them up would move an edge further than the snap tolerance. Check "
+            "the plan there.",
         )
 
 
@@ -207,6 +224,20 @@ def _openings(
             )
         parsed = parse_text(item.text)
         defaults = getattr(config.defaults, kind)
+        height, sill = defaults.height, defaults.sill
+        if parsed.h is not None and parsed.h <= 0:
+            report.warn(
+                "Openings", f"{label}: h={parsed.h:g} is not a height; used the default {height} m."
+            )
+        elif parsed.h is not None:
+            height = parsed.h
+        if parsed.sill is not None and parsed.sill < 0:
+            report.warn(
+                "Openings",
+                f"{label}: sill={parsed.sill:g} is below the floor; used the default {sill} m.",
+            )
+        elif parsed.sill is not None:
+            sill = parsed.sill
         offset = round(att.offset, 3)
         width = round(att.width, 3)
         if offset + width > seg.length:  # never past the wall end after rounding
@@ -218,8 +249,8 @@ def _openings(
                 wall=att.wall,
                 offset=offset,
                 width=width,
-                height=parsed.h if parsed.h is not None else defaults.height,
-                sill=parsed.sill if parsed.sill is not None else defaults.sill,
+                height=height,
+                sill=sill,
                 rect=ShapelyPolygon(corners),
             )
         )
@@ -257,6 +288,18 @@ def _room_notes(found: Classified, view: ShellView, report: ImportReport) -> lis
     return homeless
 
 
+def _mentions(text: str, name: str) -> bool:
+    """True if `text` names the room as a whole word.
+
+    Case is ignored for names of 3+ characters; shorter ones ("WC") must match exactly, and a
+    single character ("A", "1") is too ambiguous to link at all.
+    """
+    if len(name) < 2:
+        return False
+    flags = re.IGNORECASE if len(name) >= 3 else 0
+    return re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, flags) is not None
+
+
 def _building_notes(
     found: Classified, extra: list[str], drafts: list[RoomDraft], taken: set[str]
 ) -> list[Note]:
@@ -266,11 +309,7 @@ def _building_notes(
     for text in texts:
         if not text.strip():
             continue
-        room_ids = [
-            d.id
-            for d in drafts
-            if re.search(rf"(?<!\w){re.escape(d.name)}(?!\w)", text, re.IGNORECASE)
-        ]
+        room_ids = [d.id for d in drafts if _mentions(text, d.name)]
         note_id = new_id("note", taken)
         taken.add(note_id)
         notes.append(Note(id=note_id, text=text, room_ids=room_ids))
@@ -292,8 +331,8 @@ def _build(
         for i, d in enumerate(drafts)
         for item in d.parts
     ]
-    parts, moves = snap_parts(parts, config.snap_tolerance_m)
-    _snap_warnings(moves, drafts, report)
+    parts, moves, misses = snap_parts(parts, config.snap_tolerance_m)
+    _snap_warnings(moves, misses, drafts, report)
     polygons, overlaps = resolve_overlaps(merge_rooms(parts, names), names)
     for ov in overlaps:
         report.warn(
@@ -323,8 +362,38 @@ def _build(
     transitions = build_transitions(view, steps_at, taken, report)
     ceilings = ceiling_heights(view, config.defaults.ceiling_height, report)
     homeless = _room_notes(found, view, report)
-    notes = _building_notes(found, homeless, drafts, taken)
+    try:
+        return _assemble(
+            config,
+            drafts,
+            rings,
+            ceilings,
+            outline,
+            segments,
+            wall_ids,
+            openings,
+            transitions,
+            _building_notes(found, homeless, drafts, taken),
+        )
+    except ValidationError as e:
+        raise MiroImportError(
+            f"The imported scene failed validation (importer bug, please report): {e}"
+        ) from e
 
+
+def _assemble(
+    config: ImportConfig,
+    drafts: list[RoomDraft],
+    rings: list[list[Point]],
+    ceilings: list[float],
+    outline: list[Point],
+    segments: list[WallSegment],
+    wall_ids: list[str],
+    openings: list[OpeningDraft],
+    transitions: list[Transition],
+    notes: list[Note],
+) -> Scene:
+    """The schema objects; raises pydantic's ValidationError if any value is out of range."""
     thickness = WallThickness()
     walls = [
         Wall(
@@ -362,23 +431,18 @@ def _build(
         )
         for d, ring, ceiling in zip(drafts, rings, ceilings, strict=True)
     ]
-    try:
-        return Scene(
-            schema_version=1,
-            version=0,
-            shell=Shell(
-                outline=outline,
-                default_ceiling_height=config.defaults.ceiling_height,
-                wall_thickness=thickness,
-                rooms=rooms,
-                walls=walls,
-                transitions=transitions,
-            ),
-            roof=default_roof(),
-            materials=default_materials(),
-            notes=notes,
-        )
-    except ValidationError as e:
-        raise MiroImportError(
-            f"The imported scene failed validation (importer bug, please report): {e}"
-        ) from e
+    return Scene(
+        schema_version=1,
+        version=0,
+        shell=Shell(
+            outline=outline,
+            default_ceiling_height=config.defaults.ceiling_height,
+            wall_thickness=thickness,
+            rooms=rooms,
+            walls=walls,
+            transitions=transitions,
+        ),
+        roof=default_roof(),
+        materials=default_materials(),
+        notes=notes,
+    )

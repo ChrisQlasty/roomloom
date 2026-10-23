@@ -139,10 +139,15 @@ def read_level_notes(
 def _target_openings(
     requests: list[_StepsRequest], shell: ShellView, report: ImportReport
 ) -> dict[int, int]:
-    """Pick the door each `steps N` note refers to: one it touches, else the nearest in its room."""
-    steps_at: dict[int, int] = {}
+    """Pick the door each `steps N` note refers to: one it touches, else the nearest in its room.
+
+    When two notes pick the same door, one touching it beats one only in the room; between
+    equals the first wins. Conflicting counts are reported.
+    """
+    chosen: dict[int, tuple[_StepsRequest, bool]] = {}
     for req in requests:
         candidates = [j for j in req.touched if shell.openings[j].kind != "window"]
+        touching = bool(candidates)
         if not candidates and req.room is not None:
             candidates = [
                 j
@@ -162,8 +167,19 @@ def _target_openings(
                 req.centre, shell.openings[j].centre(shell.segments[shell.openings[j].wall])
             ),
         )
-        steps_at[target] = req.steps
-    return steps_at
+        previous = chosen.get(target)
+        if previous is None:
+            chosen[target] = (req, touching)
+            continue
+        kept = req if touching and not previous[1] else previous[0]
+        if req.steps != previous[0].steps:
+            report.warn(
+                "Levels and steps",
+                f'Steps notes "{previous[0].text}" and "{req.text}" both point at '
+                f'{shell.label(shell.openings[target])}; used "{kept.text}".',
+            )
+        chosen[target] = (kept, touching or previous[1])
+    return {j: req.steps for j, (req, _) in chosen.items()}
 
 
 def build_transitions(

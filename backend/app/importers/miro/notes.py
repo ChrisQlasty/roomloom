@@ -17,7 +17,7 @@ from app.importers.miro import MiroImportError
 from app.schema.ids import slugify
 
 _NUM = r"[+-]?\d+(?:[.,]\d+)?"
-_UNIT = r"\s*(cm|m)?(?![\w.,])"
+_UNIT = r"\s*(cm|m)?(?!\w|[.,]\d)"  # `h=3.2, #gym` and `h=3.2.` end the number
 _H = re.compile(rf"\bh\s*[=:]\s*({_NUM}){_UNIT}", re.IGNORECASE)
 _SILL = re.compile(rf"\bsill\s*[=:]\s*({_NUM}){_UNIT}", re.IGNORECASE)
 _LEVEL = re.compile(rf"\blevel\s*[=:]?\s*({_NUM}){_UNIT}", re.IGNORECASE)
@@ -61,28 +61,36 @@ def split_author(text: str) -> tuple[str, str | None]:
     return " ".join(body.split()), match.group(1).strip()
 
 
-def parse_text(text: str) -> ParsedText:
-    """Apply the annotation grammar to one item's plain text."""
-    text, author = split_author(text.translate(_MINUS))
+def parse_text(text: str, *, room_label: bool = False) -> ParsedText:
+    """Apply the annotation grammar to one item's plain text.
+
+    A `room_label` (`Room 3A #classroom h=3.2`) only has tags and `h=`, so names such as
+    `Kitchen – dining` or `Level 2 Office` stay whole.
+    """
+    text = text.translate(_MINUS)
+    author = None
+    if not room_label:
+        text, author = split_author(text)
     parsed = ParsedText(rest="", author=author)
     match, text = _take(_H, text)
     if match:
         parsed.h = _metres(match.group(1), match.group(2))
-    match, text = _take(_SILL, text)
-    if match:
-        parsed.sill = _metres(match.group(1), match.group(2))
-    match, text = _take(_LEVEL, text)
-    if match:
-        parsed.level = _metres(match.group(1), match.group(2))
-    match, text = _take(_STEPS, text)
-    if match:
-        parsed.steps = int(match.group(1) or match.group(2))
+    if not room_label:
+        match, text = _take(_SILL, text)
+        if match:
+            parsed.sill = _metres(match.group(1), match.group(2))
+        match, text = _take(_LEVEL, text)
+        if match:
+            parsed.level = _metres(match.group(1), match.group(2))
+        match, text = _take(_STEPS, text)
+        if match:
+            parsed.steps = int(match.group(1) or match.group(2))
     for raw_tag in _TAG.findall(text):
         tag = slugify(raw_tag)
         if tag and tag not in parsed.tags:
             parsed.tags.append(tag)
     text = _TAG.sub(" ", text)
-    parsed.rest = " ".join(text.split()).strip(" ,;:-")
+    parsed.rest = " ".join(text.split()).strip(" ,;:-.")
     return parsed
 
 

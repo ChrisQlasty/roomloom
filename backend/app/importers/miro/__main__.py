@@ -6,6 +6,7 @@ uv run python -m app.importers.miro --board <id> --project <slug> [--name "..."]
 
 import argparse
 import asyncio
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,10 +21,12 @@ from app.importers.miro.report import ImportReport, color_table, render
 from app.schema.project import Project
 from app.schema.scene import Scene
 from app.store.atomic import write_atomic
-from app.store.projects import ProjectStore, is_valid_slug
+from app.store.projects import ProjectStore, holds_project_data, is_valid_slug
 
-RAW_DUMP = Path("import") / "miro_raw.json"
-REPORT = Path("import") / "import_report.md"
+IMPORT_DIR = Path("import")  # the board and report the current shell was built from
+ATTEMPT_DIR = IMPORT_DIR / "attempt"  # dry runs and failed re-imports of an existing project
+RAW_DUMP = "miro_raw.json"
+REPORT = "import_report.md"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -66,6 +69,13 @@ def _write(store: ProjectStore, project: Project, scene: Scene, exists: bool) ->
     return asyncio.run(store.reimport(project, scene, "Re-imported from Miro")).scene_version
 
 
+def _keep_attempt(folder: Path) -> None:
+    """A committed re-import: its board dump and report become the current ones."""
+    for name in (RAW_DUMP, REPORT):
+        os.replace(folder / ATTEMPT_DIR / name, folder / IMPORT_DIR / name)
+    (folder / ATTEMPT_DIR).rmdir()
+
+
 def _summary(report: ImportReport) -> str:
     scene = report.scene
     assert scene is not None
@@ -94,6 +104,13 @@ def run(
             f"project {slug!r} already exists. Use --force to re-import it (its history is kept, "
             "so the current version can still be restored)."
         )
+    if not exists and not args.dry_run and holds_project_data(folder):
+        raise MiroImportError(
+            f"{folder} has a scene.json or history/ but no project.json. Restore project.json "
+            "to re-import with --force, or move the folder away to start from scratch."
+        )
+    # an existing project keeps the record of its current import until a new one commits
+    record = folder / (ATTEMPT_DIR if exists else IMPORT_DIR)
     config, created = load_config(folder)
     if created:
         print(f"Created {folder / CONFIG_FILE} with default colours; edit it if needed.")
@@ -102,26 +119,28 @@ def run(
     else:
         raw = fetch_board(args.board or settings.miro_board_id, settings.miro_token)
         source = "Miro REST API v2"
-    save_raw(raw, folder / RAW_DUMP)
+    save_raw(raw, record / RAW_DUMP)
     if interpreter is None and args.llm_notes:
         interpreter = claude_interpreter(settings)
     existing = store.get(slug) if exists else None
     project = _project(slug, args.name, existing)
     report = run_import(raw, config, project=project.name, source=source, interpreter=interpreter)
     text = render(report)
-    write_atomic(folder / REPORT, text.encode())
+    write_atomic(record / REPORT, text.encode())
     if args.dry_run:
         print("\n".join(color_table(report.colors)), end="\n\n")
         print(text)
         return 1 if report.error else 0
     if report.error or report.scene is None:
         print(f"error: {report.error}", file=sys.stderr)
-        print(f"Details: {folder / REPORT}", file=sys.stderr)
+        print(f"Details: {record / REPORT}", file=sys.stderr)
         return 1
     version = _write(store, project, report.scene, exists)
+    if exists:
+        _keep_attempt(folder)
     verb = "Re-imported" if exists else "Imported"
     print(f"{verb} {project.name!r} into {folder} (scene version {version}): {_summary(report)}.")
-    print(f"Report: {folder / REPORT}")
+    print(f"Report: {folder / IMPORT_DIR / REPORT}")
     return 0
 
 
