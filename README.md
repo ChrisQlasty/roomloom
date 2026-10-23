@@ -181,10 +181,10 @@ With `make dev` running, open http://localhost:5173/?debug=walk (add `&project=<
 | F | Fly on or off: no gravity, Space rises, Ctrl sinks (4 m/s, Shift 10 m/s) |
 | C | While flying: collision off or on (fly through walls and windows) |
 | O | Orbit the building from outside: drag to turn, right-drag (two-finger click on a trackpad) or Shift + drag to pan, scroll to zoom. O again returns to where you were walking or flying |
-| K | Child eye height (1.25 m) or adult (1.64 m) |
+| K | Child eye height (1.25 m) or adult (1.75 m) |
 | Esc | Release the mouse |
 
-You are a 1.75 m tall person with eyes at 1.64 m; the view bobs slightly with each step while walking. Walls, window glass and ceilings stop you; steps and ledges up to 35 cm are climbed automatically, so the gym's steps work both ways. Flying has no gravity and no bob, you move up and down freely, and C lets you pass through walls and windows. Panning in orbit mode stops half a building's size past the building; pressing O again later starts from the building's centre. Outside the building there is flat ground at entrance level. The box in the top-left corner shows the mode, frame rate, draw calls and the eye position and direction. Keys are ignored while a text field has focus.
+Your eyes are at 1.75 m (the body is 1.86 m tall); the view bobs slightly with each step while walking. Walls, window glass and ceilings stop you; steps and ledges up to 35 cm are climbed automatically, so the gym's steps work both ways. Flying has no gravity and no bob, you move up and down freely, and C lets you pass through walls and windows. Panning in orbit mode stops half a building's size past the building; pressing O again later starts from the building's centre. Outside the building there is flat ground at entrance level. The box in the top-left corner shows the mode, frame rate, draw calls and the eye position and direction. Keys are ignored while a text field has focus.
 
 ## Scene conventions
 

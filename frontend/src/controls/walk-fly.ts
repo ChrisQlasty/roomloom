@@ -5,16 +5,15 @@ import type { KeyboardInput } from './input';
 import { applyPose, forwardOf, wrapYaw, type Pose } from './pose';
 import { easeInOut } from './transition';
 
-/** Body height of the default (adult) walker, in metres. */
-export const PERSON_HEIGHT = 1.75;
+/** Eye height of the default (adult) walker, in metres. */
+export const EYE_HEIGHT = 1.75;
 export const CAPSULE_RADIUS = 0.25;
-export const CAPSULE_HEIGHT = PERSON_HEIGHT;
+/** The head reaches about 11 cm above the eyes, so the eye never touches a ceiling. */
+export const CAPSULE_HEIGHT = EYE_HEIGHT + 0.11;
 /** Highest step (or kerb) the walker climbs without stopping, in metres. */
 export const STEP_UP = 0.35;
 /** How far the walker follows the ground down (stairs) instead of falling. */
 export const SNAP_DOWN = 0.35;
-/** Eyes sit about 11 cm below the top of the head. */
-export const EYE_HEIGHT = PERSON_HEIGHT - 0.11;
 /** Eye height of the child view (K). */
 export const CHILD_EYE_HEIGHT = 1.25;
 export const PITCH_LIMIT_DEG = 85;
@@ -65,7 +64,7 @@ export function moveIntent(keys: KeyboardInput): MoveIntent {
 }
 
 /**
- * The walking and flying body: a capsule (radius 0.25 m, 1.75 m tall) moved through the
+ * The walking and flying body: a capsule (radius 0.25 m, 1.86 m tall) moved through the
  * {@link Colliders}. Walking, the capsule floats {@link STEP_UP} above the feet, so steps and
  * kerbs pass under it and a downward ground probe lifts the feet onto them; gravity pulls it down.
  * Walking on the ground, the eye bobs slightly with each step. Flying has no gravity and no bob,

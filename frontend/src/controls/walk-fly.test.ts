@@ -249,7 +249,8 @@ describe('WalkFly on a test floor', () => {
     expect(eyes.at(-1)).toBeCloseTo(CHILD_EYE_HEIGHT, 6);
     const steps = eyes.slice(1).map((e, i) => eyes[i]! - e);
     expect(Math.min(...steps)).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...steps)).toBeLessThan(0.05);
+    // Eased: no frame covers more than an eighth of the drop.
+    expect(Math.max(...steps)).toBeLessThan((EYE_HEIGHT - CHILD_EYE_HEIGHT) / 8);
     walker.toggleChildView();
     hold(walker, {}, 0.4);
     expect(walker.pose().position[1]).toBeCloseTo(EYE_HEIGHT, 6);
