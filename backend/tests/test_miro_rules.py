@@ -4,7 +4,7 @@ import itertools
 from typing import Any
 
 from app.importers.miro.config import ImportConfig
-from app.importers.miro.pipeline import run_import
+from app.importers.miro.pipeline import TEXT_NOT_USED, run_import
 from app.importers.miro.report import ImportReport, render
 from app.schema.scene import Scene
 
@@ -159,7 +159,7 @@ def test_room_names_from_text_items_and_unnamed_rooms() -> None:
     rooms = scene(report).shell.rooms
     assert [(r.name, r.tags) for r in rooms] == [("Kitchen", ["kitchen"]), ("Unnamed room 1", [])]
     assert any("no name" in t for t in warnings(report, "Rooms"))
-    assert [i.reason for i in report.ignored] == ["text outside rooms and notes areas"]
+    assert [i.reason for i in report.ignored] == [TEXT_NOT_USED]
 
 
 def test_memory_outside_rooms_becomes_a_building_note() -> None:

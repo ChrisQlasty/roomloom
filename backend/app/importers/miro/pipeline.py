@@ -38,6 +38,7 @@ from app.schema.ids import new_id
 from app.schema.scene import Note, Scene
 from app.schema.shell import Opening, Room, Shell, Wall, WallThickness
 
+TEXT_NOT_USED = "text in the plan that does not name an unnamed room"
 COMPASS = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
 
 
@@ -113,7 +114,7 @@ def _room_drafts(found: Classified, report: ImportReport) -> list[RoomDraft]:
             f"{unnamed} room rectangle(s) have no name and were called Unnamed room 1…{unnamed}. "
             "Write the room name inside each rectangle.",
         )
-    report.ignored += [Ignored(t.describe(), "text outside rooms and notes areas") for t in texts]
+    report.ignored += [Ignored(t.describe(), TEXT_NOT_USED) for t in texts]
     if not drafts:
         where = " inside the plan frame" if found.plan_frame else ""
         raise MiroImportError(f"No room rectangles found{where}.")

@@ -167,7 +167,7 @@ def draw_plan(plan: Area) -> None:
     plan.shape("", 850, 900, 120, 20, WINDOW)
 
     plan.sticky("level -0.3", 130, 850, 140, "orange")
-    plan.sticky("steps 2", 250, 690, 140, "orange")
+    plan.sticky("steps 2", 250, 670, 140, "orange")  # its top edge overlaps the gym door
     plan.sticky(
         "Green oil paint up to 1.5 m, plants on windowsills — Ania", 250, 200, 200, "yellow"
     )
@@ -207,9 +207,9 @@ def draw_outside_plan(canvas: Area) -> None:
 def draw_legend(legend: Area) -> None:
     """One row per element: a sample shape and the rule for drawing it."""
     legend.text(
-        "<b>HOW TO DRAW THE PLAN</b> — top of the board is north · 100 board units = 1 m when the "
-        "scale bar is 5 m long · walls come from the room outlines: rooms that should touch must "
-        "touch",
+        "<b>HOW TO DRAW THE PLAN</b> — top of the board is north · walls come from the room "
+        "outlines: rooms that should touch must touch (gaps up to 15 cm are closed) · run the "
+        "importer with <i>--dry-run</i> first and read its report",
         650,
         60,
         1200,
@@ -218,9 +218,20 @@ def draw_legend(legend: Area) -> None:
     )
     rows = [
         (
+            lambda y: legend.text("<b>Plan</b>", 150, y, 120, 16, INK),
+            "<b>PLAN FRAME</b> — put the whole building in one frame titled <i>Plan</i>. Items "
+            "outside it are ignored, except the scale bar and the Notes area.",
+        ),
+        (
+            lambda y: legend.shape("e.g. 5 m", 150, y, 200, 14, "#cccccc", 12),
+            "<b>SCALE BAR</b> — exactly one thin rectangle labelled only with its real length "
+            "(<i>5 m</i>, <i>2m</i>, <i>500 cm</i>). Lines drawn with the line tool cannot be "
+            "read by the importer unless both ends are attached to shapes.",
+        ),
+        (
             lambda y: legend.shape("Room name #tag h=3.2", 150, y, 200, 70, WHITE, 14),
-            "<b>ROOM</b> — white rectangle with its name. Optional <i>#tags</i> and <i>h=3.2</i> "
-            "(ceiling height, m; default 2.6).",
+            "<b>ROOM</b> — rectangle with its name, any fill except the door, window and passage "
+            "colours. Optional <i>#tags</i> and <i>h=3.2</i> (ceiling height, m; default 2.6).",
         ),
         (
             lambda y: (
@@ -260,8 +271,8 @@ def draw_legend(legend: Area) -> None:
         ),
         (
             lambda y: legend.sticky("steps 2", 150, y, 110, "orange"),
-            "<b>STEPS</b> — orange sticky touching a door: <i>steps 2</i>. Without it, steps of "
-            "about 18 cm are assumed.",
+            "<b>STEPS</b> — orange sticky touching a door: <i>steps 2</i> (inside a room, it "
+            "applies to the room's nearest door). Without it, steps of about 18 cm are assumed.",
         ),
         (
             lambda y: legend.sticky("Green paint to 1.5 m", 150, y, 110, "yellow"),
@@ -292,6 +303,16 @@ def draw_legend(legend: Area) -> None:
     )
 
 
+def draw_board(miro: Miro) -> None:
+    """Draw the plan frame, the scale bar and notes area, and the legend on a created board."""
+    # The plan frame spans canvas (-100,-100)..(1100,1100); plan coordinates are canvas-like.
+    plan = Area(miro, miro.frame("Plan", 500, 500, 1200, 1200), 100, 100)
+    draw_plan(plan)
+    draw_outside_plan(Area(miro))
+    # The legend sits to the right of the plan, outside it, so the importer ignores it.
+    draw_legend(Area(miro, miro.frame("Legend", 1900, 1500, 1300, 1700)))
+
+
 def main() -> None:
     """Build the board and print where to find it."""
     token = get_settings().miro_token
@@ -299,14 +320,7 @@ def main() -> None:
         sys.exit("MIRO_TOKEN is not set in .env (it needs boards:read and boards:write)")
     miro = Miro(token)
     board = miro.create_board()
-
-    # The plan frame spans canvas (-100,-100)..(1100,1100); plan coordinates are canvas-like.
-    plan = Area(miro, miro.frame("Plan", 500, 500, 1200, 1200), 100, 100)
-    draw_plan(plan)
-    draw_outside_plan(Area(miro))
-    # The legend sits to the right of the plan, outside it, so the importer ignores it.
-    draw_legend(Area(miro, miro.frame("Legend", 1900, 1375, 1300, 1450)))
-
+    draw_board(miro)
     print(f"board id: {board['id']}\nurl: {board['viewLink']}")
 
 
