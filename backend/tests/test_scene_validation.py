@@ -61,6 +61,10 @@ BAD_SCENES: dict[str, tuple[Callable[[Data], None], str]] = {
         lambda d: set_in(wall(d, "w_room_1_room_2"), "left_room_id", "r_nowhere"),
         "unknown room r_nowhere",
     ),
+    "note about unknown room": (
+        lambda d: set_in(d["notes"][0], "room_ids", ["r_nowhere"]),
+        "unknown room r_nowhere",
+    ),
     "room surface with unknown material": (
         lambda d: set_in(room(d, "r_gym")["surfaces"], "floor", "mat_nowhere"),
         "unknown material mat_nowhere",

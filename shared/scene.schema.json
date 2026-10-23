@@ -333,11 +333,20 @@
           "description": "Note text.",
           "minLength": 1,
           "type": "string"
+        },
+        "room_ids": {
+          "description": "Rooms the note is about, e.g. rooms it mentions.",
+          "items": {
+            "pattern": "^r_[a-z0-9]+(?:_[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "required": [
         "id",
-        "text"
+        "text",
+        "room_ids"
       ],
       "title": "Note",
       "type": "object"

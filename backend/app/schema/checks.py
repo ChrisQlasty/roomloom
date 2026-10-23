@@ -71,6 +71,10 @@ def _references(scene: "Scene") -> Iterator[str]:
         for room_id in wall.room_ids:
             if room_id not in room_ids:
                 yield f"wall {wall.id} references unknown room {room_id}"
+    for note in scene.notes:
+        for room_id in note.room_ids:
+            if room_id not in room_ids:
+                yield f"note {note.id} references unknown room {room_id}"
     for tr in scene.shell.transitions:
         if tr.opening_id not in opening_ids:
             yield f"transition {tr.id} references unknown opening {tr.opening_id}"

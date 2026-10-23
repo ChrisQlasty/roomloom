@@ -1,0 +1,135 @@
+{
+ "about": "A rectangle scale bar and a captioned connector scale bar: the import must fail.",
+ "items": [
+  {
+   "id": "3458764600000000044",
+   "type": "shape",
+   "data": {
+    "content": "<p>Room A</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 400,
+    "height": 300,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 200.0,
+    "y": 150.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000045",
+   "type": "shape",
+   "data": {
+    "content": "<p>1 m</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#1a1a1a",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100,
+    "height": 10.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 50.0,
+    "y": 405.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000046",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "circle"
+   },
+   "style": {
+    "fillColor": "#ffffff",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 10.0,
+    "y": 510.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000047",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "circle"
+   },
+   "style": {
+    "fillColor": "#ffffff",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 230.0,
+    "y": 510.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  }
+ ],
+ "connectors": [
+  {
+   "id": "3458764600000000048",
+   "type": "connector",
+   "shape": "straight",
+   "startItem": {
+    "id": "3458764600000000046",
+    "position": {
+     "x": "100%",
+     "y": "50%"
+    }
+   },
+   "endItem": {
+    "id": "3458764600000000047",
+    "position": {
+     "x": "0%",
+     "y": "50%"
+    }
+   },
+   "captions": [
+    {
+     "content": "<p>2 m</p>",
+     "position": "50%"
+    }
+   ],
+   "style": {
+    "strokeColor": "#1a1a1a"
+   }
+  }
+ ]
+}

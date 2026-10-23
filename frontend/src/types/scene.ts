@@ -572,6 +572,10 @@ export interface Note {
    * Note text.
    */
   text: string;
+  /**
+   * Rooms the note is about, e.g. rooms it mentions.
+   */
+  room_ids: string[];
 }
 /**
  * A content-addressed file under the project's assets/ folder; keyed by id.

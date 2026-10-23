@@ -5,7 +5,7 @@ Use `RoomLoom` as the display name and `roomloom` for packages, folders and iden
 
 ## Current state
 
-The repo scaffold (task T01), the scene schema (task T02) and the project store with history and photo uploads (task T03) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); the browser does not use it yet. Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
+The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03) and the Miro importer (task T04) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); the browser does not use it yet. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
 
 The scene document format is defined by the Pydantic models in `backend/app/schema/`. A hand-made example project, `projects/example-l-house/`, holds an L-shaped building with five rooms, a sunken gym reached by two steps, a flat roof, three objects and one photo pin. Tests use it as their fixture.
 
@@ -18,7 +18,7 @@ The scene document format is defined by the Pydantic models in `backend/app/sche
 | Node.js | 22.12+ (or 24 / 26) | `brew install node` |
 | GNU Make | any | ships with the Xcode command line tools |
 
-No API keys are needed yet.
+No API keys are needed to run the app. Importing from Miro needs `MIRO_TOKEN` (and optionally `MIRO_BOARD_ID`) in `.env`; `--llm-notes` also needs `ANTHROPIC_API_KEY`.
 
 ## Run the app
 
@@ -113,6 +113,48 @@ curl -X POST -H 'content-type: application/json' -d '{"label": "Before furniture
 
 Other endpoints: `GET /api/projects/{slug}`, `GET /api/projects/{slug}/assets/{id}` (add `?thumb=1` for the thumbnail), and `POST` / `GET /api/projects/{slug}/thumbnail`. All of them are listed at http://localhost:8000/docs.
 
+## Import a building from Miro
+
+The building shell (rooms, walls, doors, windows, floor levels) is created once, from a Miro board drawn by a few rules (the full drawing guide is `plan/miro-conventions.md` in the local planning folder): one frame titled `Plan`, one thin rectangle labelled with its real length as the scale bar (e.g. `5 m`; a line drawn with Miro's line tool only works if both its ends are attached to shapes, because Miro's API gives no position for free line ends), named room rectangles (`Room 3A #classroom h=3.2`), red doors, light-blue windows, grey passages, orange stickies for `level -0.3` / `steps 2`, yellow stickies for room memories, and a green rectangle labelled `Notes` for building-wide notes.
+
+1. **Get a Miro token** with the `boards:read` scope (Miro → Settings → Your apps, or a developer app) and put it in `.env` as `MIRO_TOKEN`. Optionally set `MIRO_BOARD_ID` (the part after `/board/` in the board URL).
+2. **Check the board first** with a dry run. It creates nothing except `projects/<slug>/import_config.yaml` (colour settings, made on the first run) and the files in `import/` (in `import/attempt/` when the project already exists), and prints every fill and sticky colour it found, then the report:
+   ```sh
+   cd backend
+   uv run python -m app.importers.miro --project old-school --dry-run
+   ```
+   If your door or window colours are listed as `room`, add their hex values to `projects/old-school/import_config.yaml` and run it again.
+3. **Import:**
+   ```sh
+   uv run python -m app.importers.miro --project old-school --name "Old school"
+   ```
+   It prints a one-line summary and writes `projects/old-school/` with the scene, a first history entry "Imported", default materials and a flat roof.
+
+| Option | Meaning |
+|---|---|
+| `--board <id>` | Board to read; defaults to `MIRO_BOARD_ID` |
+| `--project <slug>` | Project folder name (lowercase words joined by `-`); required |
+| `--name "..."` | Display name; defaults to the slug in title case |
+| `--dry-run` | Print the colours found and the report; create no project |
+| `--force` | Re-import an existing project. The new shell becomes a new history entry, so the old one can still be restored; objects, pins and materials start fresh |
+| `--llm-notes` | Let Claude (`ANTHROPIC_MODEL`) read free-text level notes such as "two steps down"; the report shows how each note was read |
+| `--from-json <path>` | Read a saved board dump (e.g. an earlier `import/miro_raw.json`) instead of calling Miro |
+
+Every run saves the raw board as `projects/<slug>/import/miro_raw.json` and writes `import/import_report.md`: the scale used, every room (area, tags, level, ceiling), every opening with its wall, steps, building notes, warnings (snapped gaps, overlaps, openings that cross no wall, unmapped colours, ...), ignored board items and the colour table. Read it after each import. For a project that already exists, a dry run or a failed re-import writes these two files to `import/attempt/` instead, so `import/` keeps describing the current shell until a re-import succeeds. The importer exits with an error, and creates no project, when the board has no scale bar or more than one, no rooms, rooms that do not touch each other, or a courtyard (a hole in the footprint). It also refuses a project folder that holds a `scene.json` or `history/` but no `project.json`, and leaves that folder untouched.
+
+What it does with imperfect drawings: gaps and overlaps between room edges up to 15 cm (at scale) are closed, and nearby edges that cannot all be lined up without moving one further than that are reported; larger overlaps are cut out of the bigger room; a door that just misses a wall attaches to a wall up to 30 cm away; a room whose tallest door does not fit under its ceiling gets a higher ceiling; a door between rooms on different levels without a `steps N` note gets steps of about 18 cm; an `h=` of 0 or less, or a negative `sill=`, is replaced by the default; when two `steps N` notes point at the same door, the one touching it wins. Each of these is listed in the report.
+
+### A starter board to copy
+
+To get a ready example (four rooms, a wing, a sunken gym, doors, windows, a passage, notes, plus a Legend frame that explains every shape and colour), create it in your own Miro account. The token needs the `boards:read` **and** `boards:write` scopes:
+
+```sh
+cd backend
+uv run python scripts/make_starter_board.py
+```
+
+It always creates a new board called "RoomLoom starter" and prints its id and link. Duplicate it and redraw, or check it with `--dry-run` (`--board <id>`). Free-standing walls (a partition that touches no other wall) cannot be drawn yet; the Legend says so.
+
 ## Scene conventions
 
 - Units are metres, and Y is up. A Miro plan point `(x, y)` maps to the world point `(x, 0, y)`. North is −Z, the top of the board.
@@ -127,6 +169,7 @@ Other endpoints: `GET /api/projects/{slug}`, `GET /api/projects/{slug}/assets/{i
 |---|---|
 | `Port 5173 is in use` or `address already in use` (8000) | Another dev server is still running. Find it with `lsof -nP -iTCP:5173 -sTCP:LISTEN` (or `:8000`) and stop it. |
 | The badge stays `backend: down` | Check the `make dev` output for a backend error, and run `curl localhost:8000/api/health`. |
+| `error: Miro refused access (401)` when importing | `MIRO_TOKEN` in `.env` is missing, expired or lacks the `boards:read` scope. |
 | uv can't find Python 3.12 | Run `uv python install 3.12`. |
 | `npm` complains about the Node version | Upgrade Node to 22.12 or newer. |
 | Blank page with no cube | Open the browser console. The page needs WebGL, which every current desktop browser has. |

@@ -1,0 +1,225 @@
+{
+ "about": "A sunken gym (level note) reached by two steps (step note), and a stage whose free-text note needs --llm-notes.",
+ "items": [
+  {
+   "id": "3458764600000000049",
+   "type": "shape",
+   "data": {
+    "content": "<p>Hall</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 600,
+    "height": 500,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 300.0,
+    "y": 250.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000050",
+   "type": "shape",
+   "data": {
+    "content": "<p>Gym #gym h=4</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 800,
+    "height": 500,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 1000.0,
+    "y": 250.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000051",
+   "type": "shape",
+   "data": {
+    "content": "<p>Stage</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#fff9b1",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 600,
+    "height": 400,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 300.0,
+    "y": 700.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000052",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#f24726",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 20.0,
+    "height": 120.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 600.0,
+    "y": 260.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000053",
+   "type": "shape",
+   "data": {
+    "content": "",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#808080",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 200.0,
+    "height": 20.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 300.0,
+    "y": 500.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000054",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>level -0.3</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "orange",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 80.0,
+    "height": 80.0
+   },
+   "position": {
+    "x": 1000,
+    "y": 250.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000055",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>steps 2</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "orange",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 60.0,
+    "height": 60.0
+   },
+   "position": {
+    "x": 650.0,
+    "y": 360.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000056",
+   "type": "sticky_note",
+   "data": {
+    "content": "<p>three steps up, the floor is higher</p>",
+    "shape": "square"
+   },
+   "style": {
+    "fillColor": "orange",
+    "textAlign": "center",
+    "textAlignVertical": "top"
+   },
+   "geometry": {
+    "width": 80.0,
+    "height": 80.0
+   },
+   "position": {
+    "x": 300,
+    "y": 700,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  },
+  {
+   "id": "3458764600000000057",
+   "type": "shape",
+   "data": {
+    "content": "<p>1 m</p>",
+    "shape": "rectangle"
+   },
+   "style": {
+    "fillColor": "#1a1a1a",
+    "fillOpacity": "1.0",
+    "borderColor": "#1a1a1a",
+    "color": "#1a1a1a"
+   },
+   "geometry": {
+    "width": 100,
+    "height": 10.0,
+    "rotation": 0.0
+   },
+   "position": {
+    "x": 50.0,
+    "y": 1005.0,
+    "origin": "center",
+    "relativeTo": "canvas_center"
+   }
+  }
+ ],
+ "connectors": []
+}
