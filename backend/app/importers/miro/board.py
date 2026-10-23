@@ -7,14 +7,14 @@ Miro facts this relies on (checked against the v2 API and a live board, 2026-10)
 - Shapes report `style.fillColor` as `#rrggbb`; sticky notes as a name such as `light_yellow`.
 - Text lives in `data.content` as HTML; frames have a plain `data.title`.
 - Connectors come from a separate endpoint and only reference the items they join
-  (`startItem`/`endItem` with a `"x%"`, `"y%"` anchor inside each item's box). Freehand lines
-  are not exposed by the API at all.
+  (`startItem`/`endItem` with a `"x%"`, `"y%"` anchor inside each item's box). A connector
+  with a free end has no coordinates at all. Freehand lines are not exposed by the API.
 """
 
 import html
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 Point = tuple[float, float]
@@ -87,11 +87,20 @@ class BoardLine:
 
 
 @dataclass(frozen=True)
+class LooseLine:
+    """A connector with a free end: the API gives no coordinates for it, only its caption."""
+
+    id: str
+    text: str
+
+
+@dataclass(frozen=True)
 class Board:
     """All items and connectors of one board."""
 
     items: list[BoardItem]
     lines: list[BoardLine]
+    loose_lines: list[LooseLine] = field(default_factory=list)
 
 
 _BREAKS = re.compile(r"<\s*(br|/p|/li|/div|/h\d)\s*/?\s*>", re.IGNORECASE)
@@ -173,13 +182,13 @@ def _anchor(item: BoardItem, end: dict[str, Any]) -> Point:
     return item.to_board((fx - 0.5) * item.width, (fy - 0.5) * item.height)
 
 
-def _line(raw: dict[str, Any], items: dict[str, BoardItem]) -> BoardLine | None:
+def _line(raw: dict[str, Any], items: dict[str, BoardItem]) -> BoardLine | LooseLine:
     start, end = raw.get("startItem") or {}, raw.get("endItem") or {}
     a_item, b_item = items.get(str(start.get("id"))), items.get(str(end.get("id")))
-    if a_item is None or b_item is None:
-        return None
     captions = raw.get("captions") or []
     text = "\n".join(html_to_text(str(c.get("content", ""))) for c in captions).strip()
+    if a_item is None or b_item is None:
+        return LooseLine(id=str(raw["id"]), text=text)
     return BoardLine(
         id=str(raw["id"]),
         a=_anchor(a_item, start),
@@ -195,5 +204,9 @@ def parse_board(raw: dict[str, Any]) -> Board:
     centres = _resolve_centres(raw_items)
     items = [_item(i, centres[str(i["id"])]) for i in raw_items]
     by_id = {i.id: i for i in items}
-    lines = [line for c in raw.get("connectors", []) if (line := _line(c, by_id))]
-    return Board(items=items, lines=lines)
+    lines = [_line(c, by_id) for c in raw.get("connectors", [])]
+    return Board(
+        items=items,
+        lines=[line for line in lines if isinstance(line, BoardLine)],
+        loose_lines=[line for line in lines if isinstance(line, LooseLine)],
+    )

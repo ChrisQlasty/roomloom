@@ -1,7 +1,7 @@
 import pytest
 
-from app.importers.miro.board import Board, BoardItem, BoardLine
-from app.importers.miro.classify import classify, scale_length_m
+from app.importers.miro.board import Board, BoardItem, BoardLine, LooseLine
+from app.importers.miro.classify import LOOSE_LINE_REASON, classify, scale_length_m
 from app.importers.miro.config import ImportConfig
 
 
@@ -117,3 +117,12 @@ def test_captioned_straight_connector_is_a_scale_bar() -> None:
     board = Board(items=[], lines=[BoardLine("k", (0, 0), (300, 400), "5 m", "straight")])
     (bar,) = classify(board, ImportConfig()).scale_bars
     assert (bar.source, bar.length_m, bar.length_units) == ("connector", 5.0, 500.0)
+
+
+def test_free_ended_line_is_explained_not_measured() -> None:
+    board = Board(items=[], lines=[], loose_lines=[LooseLine("k", "2m"), LooseLine("j", "")])
+    out = classify(board, ImportConfig())
+    assert out.scale_bars == []
+    assert [i.reason for i in out.ignored] == [LOOSE_LINE_REASON, LOOSE_LINE_REASON]
+    ((category, text),) = [w for w in out.warnings if w[0] == "Scale"]
+    assert 'line "2m" (k) looks like a scale bar' in text

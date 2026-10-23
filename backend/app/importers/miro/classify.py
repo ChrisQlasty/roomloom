@@ -11,6 +11,7 @@ from app.importers.miro.config import ImportConfig
 OpeningKind = Literal["door", "window", "passage"]
 
 RECTANGLES = {"rectangle", "round_rectangle", "square"}
+LOOSE_LINE_REASON = "line with a free end (Miro gives no coordinates for it)"
 SCALE_MIN_ASPECT = 3.0
 _SCALE_LABEL = re.compile(
     r"^\s*(\d+(?:[.,]\d+)?)\s*(m|cm|metres?|meters?)\s*\.?\s*$", re.IGNORECASE
@@ -216,5 +217,18 @@ def classify(board: Board, config: ImportConfig) -> Classified:
         else:
             label = f' "{line.text}"' if line.text else ""
             out.ignored.append(Ignored(f"connector{label} ({line.id})", "connectors are not used"))
+    for loose in board.loose_lines:
+        label = f' "{loose.text}"' if loose.text else ""
+        out.ignored.append(Ignored(f"line{label} ({loose.id})", LOOSE_LINE_REASON))
+        if scale_length_m(loose.text) is not None:
+            out.warnings.append(
+                (
+                    "Scale",
+                    f"The line{label} ({loose.id}) looks like a scale bar, but at least one of its "
+                    "ends is not attached to a shape, and Miro gives no position for such ends. "
+                    "Attach both ends to small shapes, or use a thin rectangle labelled with "
+                    "the length.",
+                )
+            )
     out.colors = _color_table(board, out)
     return out

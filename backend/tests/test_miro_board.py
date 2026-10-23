@@ -69,9 +69,11 @@ def test_connector_runs_between_its_anchor_points() -> None:
             {"id": "dangling", "startItem": {"id": "a"}, "endItem": {"id": "gone"}},
         ],
     }
-    (line,) = parse_board(raw).lines
+    board = parse_board(raw)
+    (line,) = board.lines
     assert (line.a, line.b, line.text, line.shape) == ((5.0, 0.0), (295.0, 0.0), "3 m", "straight")
     assert line.length == 290.0
+    assert [(loose.id, loose.text) for loose in board.loose_lines] == [("dangling", "")]
 
 
 def test_sticky_without_height_is_square_and_text_has_no_shape() -> None:

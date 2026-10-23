@@ -230,3 +230,8 @@ def test_items_in_a_frame_use_relative_coordinates() -> None:
     assert sorted(kitchen.polygon) == [(0.0, 0.0), (0.0, 3.0), (4.0, 0.0), (4.0, 3.0)]
     assert [r.name for r in report.scene.shell.rooms] == ["Kitchen", "Pantry"]
     assert [i.reason for i in report.ignored] == ["outside the plan frame"]
+
+
+def test_free_ended_scale_line_is_explained() -> None:
+    report = run("missing_scale")
+    assert any(cat == "Scale" and "not attached to a shape" in t for cat, t in report.warnings)

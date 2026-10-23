@@ -1,5 +1,5 @@
 {
- "about": "Two rooms and no scale bar: the import must fail.",
+ "about": "Two rooms and a '2m' line whose ends are free (no coordinates in the API): the import must fail.",
  "items": [
   {
    "id": "3458764600000000042",
@@ -52,5 +52,21 @@
    }
   }
  ],
- "connectors": []
+ "connectors": [
+  {
+   "id": "3458764600000000999",
+   "type": "connector",
+   "shape": "straight",
+   "captions": [
+    {
+     "content": "<p>2m</p>",
+     "position": "57.5668%",
+     "textAlignVertical": "middle"
+    }
+   ],
+   "style": {
+    "strokeColor": "#1a1a1a"
+   }
+  }
+ ]
 }
