@@ -144,6 +144,17 @@ Every run saves the raw board as `projects/<slug>/import/miro_raw.json` and writ
 
 What it does with imperfect drawings: gaps and overlaps between room edges up to 15 cm (at scale) are closed; larger overlaps are cut out of the bigger room; a door that just misses a wall attaches to a wall up to 30 cm away; a room whose tallest door does not fit under its ceiling gets a higher ceiling; a door between rooms on different levels without a `steps N` note gets steps of about 18 cm. Each of these is listed in the report.
 
+### A starter board to copy
+
+To get a ready example (four rooms, a wing, a sunken gym, doors, windows, a passage, notes, plus a Legend frame that explains every shape and colour), create it in your own Miro account. The token needs the `boards:read` **and** `boards:write` scopes:
+
+```sh
+cd backend
+uv run python scripts/make_starter_board.py
+```
+
+It always creates a new board called "RoomLoom starter" and prints its id and link. Duplicate it and redraw, or check it with `--dry-run` (`--board <id>`). Free-standing walls (a partition that touches no other wall) cannot be drawn yet; the Legend says so.
+
 ## Scene conventions
 
 - Units are metres, and Y is up. A Miro plan point `(x, y)` maps to the world point `(x, 0, y)`. North is −Z, the top of the board.
