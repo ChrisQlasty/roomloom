@@ -5,19 +5,20 @@ import {
   insertPointsOnEdges,
   mergeTagged,
   polygonSurface,
-  toBufferGeometry,
-  uncoveredIntervals,
-  type FaceRange,
   type MeshData,
   type Vec2,
 } from './geometry-utils';
 import { FRAME_MATERIAL, GLASS_MATERIAL, REVEAL_MATERIAL, type MaterialLibrary } from './materials';
 import { buildOpeningFixtures } from './openings';
-import { buildStairs } from './stairs';
+import { buildStairs, hasStairs } from './stairs';
 import {
+  buildJunctionHub,
   buildWallGeometry,
+  capPieces,
   computeWallJoins,
   wallSpan,
+  type JunctionHub,
+  type WallEnd,
   type WallJoin,
   type WallSpan,
 } from './walls';
@@ -44,27 +45,47 @@ export interface ShellPart {
   tag: ShellTag;
 }
 
-/** Derived lookups shared by the part builders. */
-interface ShellContext {
+/** Derived lookups shared by the part builders; build one per shell version. */
+export interface ShellContext {
   shell: Shell;
   rooms: Map<string, Room>;
   spans: Map<string, WallSpan | null>;
   joins: Map<string, WallJoin>;
+  /** Junction hubs by the wall that carries them. */
+  hubs: Map<string, JunctionHub[]>;
   openings: Map<string, { wall: Wall; opening: Opening }>;
+  /** Every room corner, so floors and ceilings share vertices with their neighbours. */
+  corners: Vec2[];
+  /** Openings whose steps get built. */
+  stepped: Set<string>;
 }
 
-function shellContext(shell: Shell): ShellContext {
+/** The lookups for `shell`. */
+export function shellContext(shell: Shell): ShellContext {
   const rooms = new Map(shell.rooms.map((r) => [r.id, r]));
+  const spans = new Map(shell.walls.map((w) => [w.id, wallSpan(w, rooms)]));
+  const { joins, hubs } = computeWallJoins(shell.walls);
+  const openings = new Map(
+    shell.walls.flatMap((wall) => wall.openings.map((o) => [o.id, { wall, opening: o }] as const)),
+  );
+  const stepped = new Set<string>();
+  for (const tr of shell.transitions) {
+    const at = openings.get(tr.opening_id);
+    const host = rooms.get(tr.host_room_id);
+    const span = at && spans.get(at.wall.id);
+    if (host && span && hasStairs(tr, host, span.threshold)) stepped.add(tr.opening_id);
+  }
+  const hubsByOwner = new Map<string, JunctionHub[]>();
+  for (const hub of hubs) hubsByOwner.set(hub.owner, [...(hubsByOwner.get(hub.owner) ?? []), hub]);
   return {
     shell,
     rooms,
-    spans: new Map(shell.walls.map((w) => [w.id, wallSpan(w, rooms)])),
-    joins: computeWallJoins(shell.walls),
-    openings: new Map(
-      shell.walls.flatMap((wall) =>
-        wall.openings.map((o) => [o.id, { wall, opening: o }] as const),
-      ),
-    ),
+    spans,
+    joins,
+    hubs: hubsByOwner,
+    openings,
+    corners: shell.rooms.flatMap((r) => r.polygon),
+    stepped,
   };
 }
 
@@ -107,17 +128,9 @@ function wallParts(wall: Wall, ctx: ShellContext): ShellPart[] {
   const span = ctx.spans.get(wall.id);
   const join = ctx.joins.get(wall.id);
   if (!span || !join) return [];
-  // End caps are only needed where no wall meeting this end covers that height.
-  const caps = (joiners: string[]): [number, number][] =>
-    uncoveredIntervals(
-      span.bottom,
-      span.top,
-      joiners.flatMap((id) => {
-        const s = ctx.spans.get(id);
-        return s ? [[s.bottom, s.top] as const] : [];
-      }),
-    );
-  const geometry = buildWallGeometry(wall, span, join, caps(join.joinersA), caps(join.joinersB));
+  // End caps are only needed where the walls meeting this end leave them open.
+  const caps = (end: WallEnd) => capPieces(wall.thickness / 2, span, end.covers, ctx.spans);
+  const geometry = buildWallGeometry(wall, span, join, caps(join.a), caps(join.b), ctx.stepped);
   const parts: ShellPart[] = [];
   for (const side of ['left', 'right'] as const) {
     const roomId = side === 'left' ? wall.left_room_id : wall.right_room_id;
@@ -128,12 +141,12 @@ function wallParts(wall: Wall, ctx: ShellContext): ShellPart[] {
       tag: { kind: 'wall_face', id: wall.id, roomId, side },
     });
   }
-  parts.push({
-    material: REVEAL_MATERIAL,
-    layer: 'main',
-    data: geometry.edges,
-    tag: { kind: 'wall_face', id: wall.id, roomId: null, side: null },
-  });
+  const edgeTag: ShellTag = { kind: 'wall_face', id: wall.id, roomId: null, side: null };
+  parts.push({ material: REVEAL_MATERIAL, layer: 'main', data: geometry.edges, tag: edgeTag });
+  for (const hub of ctx.hubs.get(wall.id) ?? []) {
+    const data = buildJunctionHub(hub, ctx.spans);
+    parts.push({ material: REVEAL_MATERIAL, layer: 'main', data, tag: edgeTag });
+  }
   for (const hole of geometry.holes) {
     const tag: ShellTag = { kind: 'opening', id: hole.id, roomId: null, side: null };
     const fixtures = buildOpeningFixtures(geometry.frame, hole, wall.thickness);
@@ -172,14 +185,14 @@ const transitionKey = (id: string): string => `transition:${id}`;
 
 /** Parts of the given entities (all when `keys` is omitted), keyed by entity, in a stable order. */
 export function buildShellParts(
-  shell: Shell,
+  ctx: ShellContext,
   keys?: ReadonlySet<string>,
 ): Map<string, ShellPart[]> {
-  const ctx = shellContext(shell);
+  const { shell } = ctx;
   const wanted = (key: string): boolean => !keys || keys.has(key);
   const parts = new Map<string, ShellPart[]>();
   for (const room of shell.rooms)
-    if (wanted(roomKey(room.id))) parts.set(roomKey(room.id), roomParts(room));
+    if (wanted(roomKey(room.id))) parts.set(roomKey(room.id), roomParts(room, ctx.corners));
   for (const wall of shell.walls)
     if (wanted(wallKey(wall.id))) parts.set(wallKey(wall.id), wallParts(wall, ctx));
   for (const tr of shell.transitions) {
@@ -192,15 +205,16 @@ export function buildShellParts(
  * Entities to rebuild when rooms change (ceiling height or surfaces): the rooms, their walls,
  * the walls meeting those (their end caps depend on the neighbours' heights) and their steps.
  */
-export function affectedByRooms(shell: Shell, roomIds: readonly string[]): Set<string> {
+export function affectedByRooms(ctx: ShellContext, roomIds: readonly string[]): Set<string> {
+  const { shell } = ctx;
   const ids = new Set(roomIds);
   const keys = new Set(roomIds.map(roomKey));
-  const joins = computeWallJoins(shell.walls);
   for (const wall of shell.walls) {
     if (!ids.has(wall.left_room_id ?? '') && !ids.has(wall.right_room_id ?? '')) continue;
     keys.add(wallKey(wall.id));
-    const join = joins.get(wall.id);
-    for (const id of [...(join?.joinersA ?? []), ...(join?.joinersB ?? [])]) keys.add(wallKey(id));
+    const join = ctx.joins.get(wall.id);
+    for (const id of [...(join?.a.joiners ?? []), ...(join?.b.joiners ?? [])])
+      keys.add(wallKey(id));
   }
   for (const tr of shell.transitions) if (ids.has(tr.host_room_id)) keys.add(transitionKey(tr.id));
   return keys;
@@ -211,14 +225,16 @@ export interface ShellBatchData {
   kind: 'shell_batch';
   layer: ShellLayer;
   material: string;
-  faceTags: FaceRange<ShellTag>[];
+  /** Tag of each geometry group (by its `materialIndex`). */
+  faceTags: ShellTag[];
 }
 
 /** The shell entity a raycast hit landed on, or null if the hit is not on the shell. */
 export function resolveShellHit(hit: THREE.Intersection): ShellTag | null {
   const data = hit.object.userData as Partial<ShellBatchData>;
   if (data.kind !== 'shell_batch' || !data.faceTags || hit.faceIndex == null) return null;
-  return findFaceTag(data.faceTags, hit.faceIndex);
+  if (!(hit.object instanceof THREE.Mesh)) return null;
+  return findFaceTag(hit.object.geometry, data.faceTags, hit.faceIndex);
 }
 
 /**
@@ -243,14 +259,18 @@ export class ShellBuilder {
   /** Build the whole shell, replacing anything built before. */
   build(shell: Shell): void {
     const dirty = new Set(this.batches.keys());
-    this.entities = buildShellParts(shell);
+    this.entities = buildShellParts(shellContext(shell));
     this.rebatch(dirty);
   }
 
-  /** Rebuild after rooms changed (ceiling height or surface materials); `shell` is the updated shell. */
+  /**
+   * Rebuild after rooms changed (ceiling height or surface materials); `shell` is the updated
+   * shell. Material edits need {@link MaterialLibrary.update} too.
+   */
   rebuildRooms(ids: readonly string[], shell: Shell): void {
     const dirty = new Set<string>();
-    for (const [key, parts] of buildShellParts(shell, affectedByRooms(shell, ids))) {
+    const ctx = shellContext(shell);
+    for (const [key, parts] of buildShellParts(ctx, affectedByRooms(ctx, ids))) {
       for (const part of [...(this.entities.get(key) ?? []), ...parts]) dirty.add(batchKey(part));
       this.entities.set(key, parts);
     }
@@ -283,22 +303,22 @@ export class ShellBuilder {
       const parts = groups.get(key) ?? [];
       const old = this.batches.get(key);
       old?.geometry.dispose();
-      const { data, ranges } = mergeTagged(parts);
-      if (ranges.length === 0) {
+      const merged = mergeTagged(parts);
+      if (!merged) {
         old?.removeFromParent();
         this.batches.delete(key);
         continue;
       }
       const first = parts[0]!;
       const mesh = old ?? new THREE.Mesh();
-      mesh.geometry = toBufferGeometry(data);
+      mesh.geometry = merged.geometry;
       mesh.material = this.materials.get(first.material);
       mesh.name = key;
       const userData: ShellBatchData = {
         kind: 'shell_batch',
         layer: first.layer,
         material: first.material,
-        faceTags: ranges,
+        faceTags: merged.tags,
       };
       mesh.userData = userData;
       if (!old) {

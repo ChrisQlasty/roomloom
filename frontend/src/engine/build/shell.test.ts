@@ -7,6 +7,7 @@ import {
   buildShellParts,
   resolveShellHit,
   ShellBuilder,
+  shellContext,
   type ShellTag,
 } from './shell';
 import { loadExampleScene } from './test-scene';
@@ -34,7 +35,7 @@ function cast(
 
 describe('buildShellParts', () => {
   const scene = loadExampleScene();
-  const parts = [...buildShellParts(scene.shell).values()].flat();
+  const parts = [...buildShellParts(shellContext(scene.shell)).values()].flat();
 
   it('tags floors, ceilings, both faces of every wall, every opening and the steps', () => {
     const tags = parts.map((p) => p.tag);
@@ -67,10 +68,21 @@ describe('buildShellParts', () => {
   it('uses a face override when set', () => {
     const custom = loadExampleScene();
     custom.shell.walls.find((w) => w.id === 'w_hall_west')!.face_overrides.left = 'mat_wall_board';
-    const face = [...buildShellParts(custom.shell).values()]
+    const face = [...buildShellParts(shellContext(custom.shell)).values()]
       .flat()
       .find((p) => p.tag.id === 'w_hall_west' && p.tag.side === 'left')!;
     expect(face.material).toBe('mat_wall_board');
+  });
+
+  it("adds the neighbours' corners to floors and ceilings, so seams have no cracks", () => {
+    // The hall's east edge (12,10)–(12,0) passes Room 1's corner (12, 7) on the corridor.
+    for (const kind of ['floor', 'ceiling']) {
+      const hall = parts.find((p) => p.tag.kind === kind && p.tag.id === 'r_entrance_hall')!;
+      const xz = hall.data.positions.flatMap((v, i) =>
+        i % 3 === 0 ? [[v, hall.data.positions[i + 2]]] : [],
+      );
+      expect(xz, kind).toContainEqual([12, 7]);
+    }
   });
 });
 
@@ -149,7 +161,7 @@ describe('ShellBuilder', () => {
 describe('affectedByRooms', () => {
   it('includes the room, its walls, the walls meeting them and its steps', () => {
     const { shell } = loadExampleScene();
-    const keys = affectedByRooms(shell, ['r_gym']);
+    const keys = affectedByRooms(shellContext(shell), ['r_gym']);
     expect(keys).toContain('room:r_gym');
     expect(keys).toContain('wall:w_gym_east');
     expect(keys).toContain('wall:w_corridor_south'); // meets w_gym_east at (12, 10)

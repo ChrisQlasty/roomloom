@@ -1,4 +1,5 @@
 import { BufferGeometry, Float32BufferAttribute, ShapeUtils, Vector2 } from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** A plan point [x, y] in metres (world x, z). */
 export type Vec2 = readonly [number, number];
@@ -13,24 +14,12 @@ export interface MeshData {
   indices: number[];
 }
 
-/** Triangles `[start, start + count)` of a merged mesh belong to `tag`. */
-export interface FaceRange<T> {
-  start: number;
-  count: number;
-  tag: T;
-}
-
 /** Tolerance for comparing lengths and heights, in metres. */
 export const EPS = 1e-6;
 
 /** A mesh with no vertices. */
 export function emptyMesh(): MeshData {
   return { positions: [], normals: [], uvs: [], indices: [] };
-}
-
-/** Number of triangles in `mesh`. */
-export function triangleCount(mesh: MeshData): number {
-  return mesh.indices.length / 3;
 }
 
 function sub(a: Vec3, b: Vec3): Vec3 {
@@ -136,43 +125,31 @@ export function insertPointsOnEdges(polygon: readonly Vec2[], points: readonly V
   return result;
 }
 
-/** Append every array of `part` to `target`, shifting its indices. */
-export function appendMesh(target: MeshData, part: MeshData): void {
-  const base = target.positions.length / 3;
-  target.positions.push(...part.positions);
-  target.normals.push(...part.normals);
-  target.uvs.push(...part.uvs);
-  for (const i of part.indices) target.indices.push(base + i);
+/**
+ * Merge tagged meshes into one geometry with a group per non-empty part; a group's
+ * `materialIndex` indexes `tags`. Null when every part is empty.
+ */
+export function mergeTagged<T>(
+  parts: readonly { data: MeshData; tag: T }[],
+): { geometry: BufferGeometry; tags: T[] } | null {
+  const kept = parts.filter((p) => p.data.indices.length > 0);
+  if (kept.length === 0) return null;
+  const geometry = mergeGeometries(
+    kept.map((p) => toBufferGeometry(p.data)),
+    true,
+  );
+  return { geometry, tags: kept.map((p) => p.tag) };
 }
 
-/** Merge tagged meshes into one, recording which triangle range came from which tag. */
-export function mergeTagged<T>(parts: readonly { data: MeshData; tag: T }[]): {
-  data: MeshData;
-  ranges: FaceRange<T>[];
-} {
-  const data = emptyMesh();
-  const ranges: FaceRange<T>[] = [];
-  for (const { data: part, tag } of parts) {
-    const count = triangleCount(part);
-    if (count === 0) continue;
-    ranges.push({ start: triangleCount(data), count, tag });
-    appendMesh(data, part);
-  }
-  return { data, ranges };
-}
-
-/** The tag of triangle `faceIndex` in a merged mesh, or null if it is out of range. */
-export function findFaceTag<T>(ranges: readonly FaceRange<T>[], faceIndex: number): T | null {
-  let lo = 0;
-  let hi = ranges.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const range = ranges[mid]!;
-    if (faceIndex < range.start) hi = mid - 1;
-    else if (faceIndex >= range.start + range.count) lo = mid + 1;
-    else return range.tag;
-  }
-  return null;
+/** The tag of triangle `faceIndex` in a geometry from {@link mergeTagged}, or null if out of range. */
+export function findFaceTag<T>(
+  geometry: BufferGeometry,
+  tags: readonly T[],
+  faceIndex: number,
+): T | null {
+  const index = faceIndex * 3;
+  const group = geometry.groups.find((g) => index >= g.start && index < g.start + g.count);
+  return group?.materialIndex === undefined ? null : (tags[group.materialIndex] ?? null);
 }
 
 /** Parts of `[lo, hi]` not covered by any of `covers`, in ascending order. */
@@ -193,14 +170,12 @@ export function uncoveredIntervals(
   return gaps.filter(([from, to]) => to - from > EPS);
 }
 
-/** Upload-ready geometry for `mesh`. */
+/** Upload-ready geometry for `mesh`; three computes its bounds when first needed. */
 export function toBufferGeometry(mesh: MeshData): BufferGeometry {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3));
   geometry.setAttribute('normal', new Float32BufferAttribute(mesh.normals, 3));
   geometry.setAttribute('uv', new Float32BufferAttribute(mesh.uvs, 2));
   geometry.setIndex(mesh.indices);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
   return geometry;
 }

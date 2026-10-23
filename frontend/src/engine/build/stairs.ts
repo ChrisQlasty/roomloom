@@ -32,6 +32,11 @@ export function stairProfile(steps: number, upper: number, lower: number, faceS:
   return points;
 }
 
+/** Whether {@link buildStairs} builds steps: it needs at least one, in a host room below `threshold`. */
+export function hasStairs(transition: Transition, host: Room, threshold: number): boolean {
+  return transition.steps >= 1 && host.floor_level <= threshold - EPS;
+}
+
 /**
  * Steps for `transition`, built in its host room in front of the opening, as wide as the opening.
  * They climb from the host floor to the threshold (the higher floor beside the wall), with
@@ -46,7 +51,7 @@ export function buildStairs(
 ): MeshData | null {
   const upper = threshold;
   const lower = upper - transition.rise_total;
-  if (transition.steps < 1 || host.floor_level > upper - EPS) return null;
+  if (!hasStairs(transition, host, threshold)) return null;
   const f = wallFrame(wall.a, wall.b);
   const into = wall.left_room_id === host.id ? 1 : -1;
   const profile = stairProfile(transition.steps, upper, lower, wall.thickness / 2);

@@ -4,7 +4,6 @@ import {
   insertPointsOnEdges,
   mergeTagged,
   polygonSurface,
-  triangleCount,
   uncoveredIntervals,
   type MeshData,
   type Vec2,
@@ -67,7 +66,7 @@ describe('polygonSurface', () => {
 });
 
 describe('mergeTagged / findFaceTag', () => {
-  it('records triangle ranges and resolves faces to tags', () => {
+  it('merges parts into groups and resolves faces to tags', () => {
     const square: Vec2[] = [
       [0, 0],
       [1, 0],
@@ -76,19 +75,23 @@ describe('mergeTagged / findFaceTag', () => {
     ];
     const a = polygonSurface(square, 0, 'up');
     const b = polygonSurface(L_SHAPE, 0, 'up');
-    const { data, ranges } = mergeTagged([
+    const triangles = (m: MeshData): number => m.indices.length / 3;
+    const merged = mergeTagged([
       { data: a, tag: 'a' },
       { data: { positions: [], normals: [], uvs: [], indices: [] }, tag: 'empty' },
       { data: b, tag: 'b' },
-    ]);
-    expect(triangleCount(data)).toBe(triangleCount(a) + triangleCount(b));
-    expect(ranges.map((r) => r.tag)).toEqual(['a', 'b']);
-    expect(findFaceTag(ranges, 0)).toBe('a');
-    expect(findFaceTag(ranges, triangleCount(a))).toBe('b');
-    expect(findFaceTag(ranges, triangleCount(data) - 1)).toBe('b');
-    expect(findFaceTag(ranges, triangleCount(data))).toBeNull();
-    // Indices of the second part are shifted past the first part's vertices.
-    expect(Math.min(...data.indices.slice(a.indices.length))).toBe(a.positions.length / 3);
+    ])!;
+    const { geometry, tags } = merged;
+    const total = triangles(a) + triangles(b);
+    expect(geometry.index!.count).toBe(total * 3);
+    expect(tags).toEqual(['a', 'b']);
+    expect(findFaceTag(geometry, tags, 0)).toBe('a');
+    expect(findFaceTag(geometry, tags, triangles(a))).toBe('b');
+    expect(findFaceTag(geometry, tags, total - 1)).toBe('b');
+    expect(findFaceTag(geometry, tags, total)).toBeNull();
+    expect(
+      mergeTagged([{ data: { positions: [], normals: [], uvs: [], indices: [] }, tag: 'x' }]),
+    ).toBeNull();
   });
 });
 
