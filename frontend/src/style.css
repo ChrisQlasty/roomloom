@@ -29,3 +29,16 @@ canvas {
 .health[data-state='down'] {
   color: #f08080;
 }
+
+.debug-info {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 55%);
+  color: #ddd;
+  font-size: 12px;
+  pointer-events: none;
+}

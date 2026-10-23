@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { startShellDebugPage } from './engine/debug/shell-page';
 import { fetchHealth } from './net/api';
 
 const HEALTH_POLL_MS = 5000;
@@ -68,6 +69,8 @@ async function pollHealth(el: HTMLElement): Promise<void> {
   setTimeout(() => void pollHealth(el), HEALTH_POLL_MS);
 }
 
-startScene();
+const params = new URLSearchParams(window.location.search);
+if (params.get('debug') === 'shell') void startShellDebugPage(params);
+else startScene();
 const healthEl = document.getElementById('health');
 if (healthEl) void pollHealth(healthEl);
