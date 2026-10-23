@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadExampleScene } from '../engine/build/test-scene';
 import { KeyboardInput } from './input';
+import { PAN_MARGIN_FACTOR } from './orbit';
 import { poseOf } from './pose';
 import { spawnPose } from './spawn';
 import { exampleColliders, FRAME } from './test-world';
@@ -168,6 +169,27 @@ describe('ViewControls', () => {
     run(0.5);
     expect(controls.mode).toBe('fly');
     expect(camera.position.y).toBeCloseTo(y, 6);
+  });
+
+  it('lets orbit panning slide the centre, but not far past the building', () => {
+    keyDown(keys, 'KeyO');
+    run(0.5);
+    const { controls: orbit } = controls.orbit;
+    const center = bounds.getCenter(new THREE.Vector3());
+    const radius = bounds.getBoundingSphere(new THREE.Sphere()).radius;
+    // Pan by 5 m east: allowed.
+    orbit.target.x += 5;
+    camera.position.x += 5;
+    run(0.1);
+    expect(orbit.target.x).toBeCloseTo(center.x + 5, 6);
+    // Pan by 1 km south: stopped at the limit, the view direction unchanged.
+    const dir = camera.getWorldDirection(new THREE.Vector3());
+    orbit.target.z += 1000;
+    camera.position.z += 1000;
+    run(0.1);
+    expect(orbit.target.z).toBeCloseTo(bounds.max.z + radius * PAN_MARGIN_FACTOR, 6);
+    expect(camera.getWorldDirection(new THREE.Vector3()).distanceTo(dir)).toBeLessThan(1e-6);
+    expect(orbit.enablePan).toBe(true);
   });
 
   it('ignores F in orbit mode and switches the child view with K', () => {

@@ -10,6 +10,8 @@ export const MAX_DISTANCE_FACTOR = 4;
 const START_ELEVATION_DEG = 30;
 /** Keep the camera above the ground: the lowest view is this many degrees above horizontal. */
 const MIN_ELEVATION_DEG = 3;
+/** How far panning may move the orbit centre past the building, as a multiple of its radius. */
+export const PAN_MARGIN_FACTOR = 0.5;
 
 /** Where the orbit camera starts: its position and the point it looks at. */
 export interface OrbitView {
@@ -66,17 +68,23 @@ export function viewState(view: OrbitView): CameraState {
 
 /**
  * Orbit mode for the exterior: three's OrbitControls around the centre of the building's bounding
- * box, zoom limited relative to its size, no panning, and never below the ground.
+ * box, zoom limited relative to its size, and never below the ground. Panning (right-drag, or
+ * Shift + drag) slides the orbit centre over the ground, at most {@link PAN_MARGIN_FACTOR} building
+ * radii past the building. Re-entering orbit mode starts from the centre again.
  */
 export class OrbitMode {
   readonly controls: OrbitControls;
   private bounds = new THREE.Box3(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1));
+  /** Where the orbit centre may be panned to (horizontally). */
+  private panArea = this.bounds.clone();
+  private readonly shift = new THREE.Vector3();
 
   constructor(camera: THREE.PerspectiveCamera, element: HTMLElement) {
     this.controls = new OrbitControls(camera, element);
     this.controls.enabled = false;
     this.controls.enableDamping = true;
-    this.controls.enablePan = false;
+    // Pan parallel to the ground, so the orbit centre keeps its height.
+    this.controls.screenSpacePanning = false;
     this.controls.maxPolarAngle = THREE.MathUtils.degToRad(90 - MIN_ELEVATION_DEG);
   }
 
@@ -87,6 +95,7 @@ export class OrbitMode {
     this.controls.target.copy(center);
     this.controls.minDistance = radius * MIN_DISTANCE_FACTOR;
     this.controls.maxDistance = radius * MAX_DISTANCE_FACTOR;
+    this.panArea = bounds.clone().expandByScalar(radius * PAN_MARGIN_FACTOR);
   }
 
   /** The view to fly to when entering orbit mode from the eye pose `from`. */
@@ -107,9 +116,20 @@ export class OrbitMode {
     this.controls.enabled = false;
   }
 
-  /** Per frame while enabled (applies damping). */
+  /** Per frame while enabled: applies damping and keeps the panned centre near the building. */
   update(): void {
-    if (this.controls.enabled) this.controls.update();
+    if (!this.controls.enabled) return;
+    this.controls.update();
+    const { target, object } = this.controls;
+    const { min, max } = this.panArea;
+    this.shift.set(
+      THREE.MathUtils.clamp(target.x, min.x, max.x) - target.x,
+      0,
+      THREE.MathUtils.clamp(target.z, min.z, max.z) - target.z,
+    );
+    // Move the camera with the centre, so hitting the limit stops the pan without turning the view.
+    target.add(this.shift);
+    object.position.add(this.shift);
   }
 
   /** Stop listening to the canvas. */
