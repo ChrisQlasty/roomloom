@@ -5,7 +5,7 @@ Use `RoomLoom` as the display name and `roomloom` for packages, folders and iden
 
 ## Current state
 
-The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03) and the Miro importer (task T04) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); the browser does not use it yet. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. Rooms, walking, the minimap and the agent come in later tasks.
+The repo scaffold (task T01), the scene schema (task T02), the project store with history and photo uploads (task T03), the Miro importer (task T04) and the 3D shell geometry (task T05) exist so far. The backend serves projects over a REST API (see [Projects, history and assets](#projects-history-and-assets)); the browser does not use it yet. New projects are created by importing a Miro sketch from the command line (see [Import a building from Miro](#import-a-building-from-miro)). Running the app shows a test page: a rotating box and a badge that says whether the frontend can reach the backend. A developer page shows a project's building in 3D (see [View the building shell](#view-the-building-shell)). Walking, the minimap and the agent come in later tasks.
 
 The scene document format is defined by the Pydantic models in `backend/app/schema/`. A hand-made example project, `projects/example-l-house/`, holds an L-shaped building with five rooms, a sunken gym reached by two steps, a flat roof, three objects and one photo pin. Tests use it as their fixture.
 
@@ -155,6 +155,20 @@ uv run python scripts/make_starter_board.py
 
 It always creates a new board called "RoomLoom starter" and prints its id and link. Duplicate it and redraw, or check it with `--dry-run` (`--board <id>`). Free-standing walls (a partition that touches no other wall) cannot be drawn yet; the Legend says so.
 
+## View the building shell
+
+With `make dev` running, open http://localhost:5173/?debug=shell. It loads `example-l-house` from the backend and shows its locked shell: floors, ceilings, walls with door and window holes, frames, glass and the gym's steps. Drag to orbit, scroll to zoom, right-drag to pan. The axes helper at the origin points east (red, +X), up (green, +Y) and south (blue, +Z). The box in the top-left corner shows the draw call count and what is under the mouse pointer (for example `wall_face · w_hall_room_1 · left · room r_room_1`).
+
+URL parameters (all optional):
+
+| Parameter | Example | Meaning |
+|---|---|---|
+| `project` | `project=my-school` | Show another project. |
+| `cam` | `cam=10,1.6,13` | Camera position in world metres (x, y, z). |
+| `look` | `look=7.8,0,10` | Point the camera looks at. |
+
+Ceilings face down and walls face outwards, so from above you see into the rooms through the ceilings. Lighting is deliberately plain on this page; the real renderer comes later.
+
 ## Scene conventions
 
 - Units are metres, and Y is up. A Miro plan point `(x, y)` maps to the world point `(x, 0, y)`. North is −Z, the top of the board.
@@ -173,6 +187,7 @@ It always creates a new board called "RoomLoom starter" and prints its id and li
 | uv can't find Python 3.12 | Run `uv python install 3.12`. |
 | `npm` complains about the Node version | Upgrade Node to 22.12 or newer. |
 | Blank page with no cube | Open the browser console. The page needs WebGL, which every current desktop browser has. |
+| `?debug=shell` shows `Loading scene of … failed: HTTP 404` | The project slug does not exist under `projects/`; check the `project` parameter. Any other error usually means the backend is not running. |
 
 ## Repo layout
 

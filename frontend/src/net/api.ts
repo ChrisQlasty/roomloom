@@ -1,3 +1,5 @@
+import type { Scene } from '../types/scene';
+
 /** Backend health as shown in the HUD. */
 export type HealthState = 'ok' | 'down';
 
@@ -20,4 +22,16 @@ export async function fetchHealth(
   } catch {
     return 'down';
   }
+}
+
+/** URL of a project's asset file. */
+export function assetUrl(slug: string, assetId: string): string {
+  return `/api/projects/${encodeURIComponent(slug)}/assets/${encodeURIComponent(assetId)}`;
+}
+
+/** Load a project's current scene; throws with the HTTP status on failure. */
+export async function fetchScene(slug: string, fetchFn: typeof fetch = fetch): Promise<Scene> {
+  const response = await fetchFn(`/api/projects/${encodeURIComponent(slug)}/scene`);
+  if (!response.ok) throw new Error(`Loading scene of ${slug} failed: HTTP ${response.status}`);
+  return (await response.json()) as Scene;
 }

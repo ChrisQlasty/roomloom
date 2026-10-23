@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fetchHealth } from './api';
+import { assetUrl, fetchHealth, fetchScene } from './api';
 
 const respond =
   (status: number, body: unknown): typeof fetch =>
@@ -32,5 +32,27 @@ describe('fetchHealth', () => {
         init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
       });
     expect(await fetchHealth(hanging, 10)).toBe('down');
+  });
+});
+
+describe('fetchScene', () => {
+  it('returns the scene of the project', async () => {
+    let url = '';
+    const fetchFn: typeof fetch = async (input) => {
+      url = String(input);
+      return new Response(JSON.stringify({ version: 3 }), { status: 200 });
+    };
+    expect(await fetchScene('example-l-house', fetchFn)).toEqual({ version: 3 });
+    expect(url).toBe('/api/projects/example-l-house/scene');
+  });
+
+  it('throws on an error status', async () => {
+    await expect(fetchScene('missing', respond(404, {}))).rejects.toThrow('HTTP 404');
+  });
+});
+
+describe('assetUrl', () => {
+  it('points at the asset endpoint', () => {
+    expect(assetUrl('p', 'ast_x')).toBe('/api/projects/p/assets/ast_x');
   });
 });
