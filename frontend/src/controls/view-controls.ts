@@ -18,6 +18,13 @@ export interface ControlEvents {
   mode: ControlMode;
 }
 
+/** A point on the plan (world x, z) with the camera's heading (schema yaw, degrees). */
+export interface GroundFocus {
+  x: number;
+  z: number;
+  yawDeg: number;
+}
+
 /** Setup of {@link ViewControls}. */
 export interface ViewControlsOptions {
   camera: THREE.PerspectiveCamera;
@@ -82,6 +89,20 @@ export class ViewControls {
     return this.current;
   }
 
+  /**
+   * What the minimap centres on: where the walker stands, or in orbit mode the point the camera
+   * orbits (its ground target); the heading is the camera's in both.
+   */
+  focus(): GroundFocus {
+    const yawDeg = (this.lastPose ?? poseOf(this.camera)).yawDeg;
+    if (this.current === 'orbit') {
+      const { x, z } = this.orbit.controls.target;
+      return { x, z, yawDeg };
+    }
+    const [x, , z] = this.walker.pose().position;
+    return { x, z, yawDeg };
+  }
+
   /** Orbit around new bounds, e.g. after the roof changed. */
   setBounds(bounds: THREE.Box3): void {
     this.orbit.setBounds(bounds);
@@ -135,6 +156,8 @@ export class ViewControls {
     this.pointer.release();
     this.pointer.enabled = false;
     const view = this.orbit.startView(this.walker.pose());
+    // Set the orbit centre now, so focus() reports it during the transition too.
+    this.orbit.controls.target.copy(view.target);
     this.animateTo(viewState(view), () => this.orbit.enable());
     this.setMode('orbit');
   }

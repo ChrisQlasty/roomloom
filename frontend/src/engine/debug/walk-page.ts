@@ -3,6 +3,7 @@ import { Colliders } from '../../controls/collision';
 import { spawnPose } from '../../controls/spawn';
 import { ViewControls, type ControlEvents } from '../../controls/view-controls';
 import { fetchProject, fetchScene } from '../../net/api';
+import { Minimap } from '../../ui/minimap';
 import { toBufferGeometry } from '../build/geometry-utils';
 import { groundSurface } from '../build/ground';
 import { createDebugWorld } from './debug-world';
@@ -21,11 +22,13 @@ function describe(
   pose: ControlEvents['pose'] | null,
   fps: number,
   calls: number,
+  minimapMs: number,
 ): string {
   const where = pose
     ? `eye ${pose.position.map((v) => v.toFixed(2)).join(', ')}  yaw ${pose.yawDeg.toFixed(0)}°  pitch ${pose.pitchDeg.toFixed(0)}°`
     : '';
-  return `${mode}  ${fps.toFixed(0)} fps  ${calls} draw calls\n${where}\n${HELP}`;
+  const stats = `${fps.toFixed(0)} fps  ${calls} draw calls  minimap ${minimapMs.toFixed(2)} ms`;
+  return `${mode}  ${stats}\n${where}\n${HELP}`;
 }
 
 /**
@@ -74,6 +77,8 @@ export async function startWalkDebugPage(params: URLSearchParams): Promise<void>
   let pose: ControlEvents['pose'] | null = null;
   controls.events.on('mode', (m) => (mode = m));
   controls.events.on('pose', (p) => (pose = p));
+  const minimap = new Minimap();
+  minimap.setScene(scene.shell, scene.pins);
 
   const timer = new THREE.Timer();
   timer.connect(document);
@@ -83,7 +88,8 @@ export async function startWalkDebugPage(params: URLSearchParams): Promise<void>
     const dt = timer.getDelta();
     if (dt > 0) fps += (1 / dt - fps) * 0.05;
     controls.update(dt);
+    minimap.update(controls.focus());
     renderer.render(world, camera);
-    info.textContent = describe(mode, pose, fps, renderer.info.render.calls);
+    info.textContent = describe(mode, pose, fps, renderer.info.render.calls, minimap.lastDrawMs);
   });
 }
