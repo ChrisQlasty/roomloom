@@ -90,6 +90,16 @@ export function polygonArea(polygon: readonly Vec2[]): number {
   return Math.abs(ShapeUtils.area(toVectors(polygon)));
 }
 
+/** Whether plan point `[x, z]` lies inside `polygon` (even-odd rule; points on an edge may go either way). */
+export function polygonContains(polygon: readonly Vec2[], [x, z]: Vec2): boolean {
+  let inside = false;
+  polygon.forEach(([x0, z0], i) => {
+    const [x1, z1] = polygon[(i + 1) % polygon.length]!;
+    if (z0 > z !== z1 > z && x < ((x1 - x0) * (z - z0)) / (z1 - z0) + x0) inside = !inside;
+  });
+  return inside;
+}
+
 /**
  * A horizontal surface over a plan polygon at height `y`, facing up (floors) or down (ceilings).
  * UVs are plan metres (u = x, v = z); materials scale them by their tile size.
