@@ -1,4 +1,4 @@
-import { polygonArea, type Vec2, type Vec3 } from '../engine/build/geometry-utils';
+import { polygonArea, polygonContains, type Vec2, type Vec3 } from '../engine/build/geometry-utils';
 import { frameAxis, framePoint, wallFrame } from '../engine/build/walls';
 import type { Spawn } from '../types/project';
 import type { Room, Shell } from '../types/scene';
@@ -13,15 +13,6 @@ const INTERIOR_GRID = 24;
 export interface SpawnPose {
   position: Vec3;
   yawDeg: number;
-}
-
-function contains(polygon: readonly Vec2[], [x, z]: Vec2): boolean {
-  let inside = false;
-  polygon.forEach(([x0, z0], i) => {
-    const [x1, z1] = polygon[(i + 1) % polygon.length]!;
-    if (z0 > z !== z1 > z && x < ((x1 - x0) * (z - z0)) / (z1 - z0) + x0) inside = !inside;
-  });
-  return inside;
 }
 
 function distanceToEdges(polygon: readonly Vec2[], [x, z]: Vec2): number {
@@ -54,12 +45,12 @@ export function roomCenter(polygon: readonly Vec2[]): Vec2 {
   for (let i = 0; i <= INTERIOR_GRID; i++) {
     for (let j = 0; j <= INTERIOR_GRID; j++) {
       const p: Vec2 = [x0 + i * step, z0 + j * step];
-      if (!contains(polygon, p)) continue;
+      if (!polygonContains(polygon, p)) continue;
       const d = distanceToEdges(polygon, p);
       if (d > bestDistance) [best, bestDistance] = [p, d];
     }
   }
-  const meanDistance = contains(polygon, mean) ? distanceToEdges(polygon, mean) : -1;
+  const meanDistance = polygonContains(polygon, mean) ? distanceToEdges(polygon, mean) : -1;
   return meanDistance * 2 >= bestDistance ? mean : best;
 }
 

@@ -96,6 +96,42 @@ describe('ViewControls', () => {
     expect(poses.length).toBe(count);
   });
 
+  it('focuses the minimap on the walker, and on the orbit centre from the moment orbit starts', () => {
+    run(0.5);
+    const walking = controls.focus();
+    expect(walking.x).toBeCloseTo(6, 6);
+    expect(walking.z).toBeCloseTo(2, 6);
+    expect(walking.yawDeg).toBeCloseTo(180, 6);
+
+    keyDown(keys, 'KeyO');
+    run(0.1);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const orbiting = controls.focus();
+    expect(orbiting.x).toBeCloseTo(center.x, 6);
+    expect(orbiting.z).toBeCloseTo(center.z, 6);
+    expect(orbiting.yawDeg).toBeCloseTo(poseOf(camera).yawDeg, 6);
+  });
+
+  it('keeps the minimap on the walker and its heading while flying back from orbit', () => {
+    run(0.5);
+    keyDown(keys, 'KeyO');
+    run(0.5);
+    // Look at the building from a quarter turn round.
+    const { target } = controls.orbit.controls;
+    camera.position
+      .sub(target)
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+      .add(target);
+    run(0.5);
+    keyDown(keys, 'KeyO');
+    run(0.1);
+    const focus = controls.focus();
+    expect(focus.x).toBeCloseTo(6, 6);
+    expect(focus.z).toBeCloseTo(2, 6);
+    expect(focus.yawDeg).toBeCloseTo(180, 6);
+    expect(Math.abs(poseOf(camera).yawDeg - 180)).toBeGreaterThan(5); // the camera is still turning
+  });
+
   it('walks with W while held', () => {
     run(0.2);
     keyDown(keys, 'KeyW');
