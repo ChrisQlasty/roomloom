@@ -70,6 +70,10 @@ export function addQuad(
   addFace(mesh, points, uvs, [0, 1, 2, 0, 2, 3], normal);
 }
 
+function toVectors(ring: readonly Vec2[]): Vector2[] {
+  return ring.map(([x, y]) => new Vector2(x, y));
+}
+
 /**
  * Triangulate a simple polygon with optional holes (none may repeat its first point at the end).
  * Returns flat indices into `[...contour, ...holes.flat()]`.
@@ -78,8 +82,12 @@ export function triangulate(
   contour: readonly Vec2[],
   holes: readonly (readonly Vec2[])[] = [],
 ): number[] {
-  const toV = (ring: readonly Vec2[]): Vector2[] => ring.map(([x, y]) => new Vector2(x, y));
-  return ShapeUtils.triangulateShape(toV(contour), holes.map(toV)).flat();
+  return ShapeUtils.triangulateShape(toVectors(contour), holes.map(toVectors)).flat();
+}
+
+/** Area of a simple polygon in square metres, whatever its winding. */
+export function polygonArea(polygon: readonly Vec2[]): number {
+  return Math.abs(ShapeUtils.area(toVectors(polygon)));
 }
 
 /**

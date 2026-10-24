@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assetUrl, fetchHealth, fetchScene } from './api';
+import { assetUrl, fetchHealth, fetchProject, fetchScene } from './api';
 
 const respond =
   (status: number, body: unknown): typeof fetch =>
@@ -48,6 +48,22 @@ describe('fetchScene', () => {
 
   it('throws on an error status', async () => {
     await expect(fetchScene('missing', respond(404, {}))).rejects.toThrow('HTTP 404');
+  });
+});
+
+describe('fetchProject', () => {
+  it('returns the project metadata', async () => {
+    let url = '';
+    const fetchFn: typeof fetch = async (input) => {
+      url = String(input);
+      return new Response(JSON.stringify({ slug: 'p', spawn: null }), { status: 200 });
+    };
+    expect(await fetchProject('p', fetchFn)).toEqual({ slug: 'p', spawn: null });
+    expect(url).toBe('/api/projects/p');
+  });
+
+  it('throws on an error status', async () => {
+    await expect(fetchProject('missing', respond(404, {}))).rejects.toThrow('HTTP 404');
   });
 });
 

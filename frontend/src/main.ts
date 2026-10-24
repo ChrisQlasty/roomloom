@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { startShellDebugPage } from './engine/debug/shell-page';
+import { startWalkDebugPage } from './engine/debug/walk-page';
 import { fetchHealth } from './net/api';
 
 const HEALTH_POLL_MS = 5000;
@@ -70,7 +71,9 @@ async function pollHealth(el: HTMLElement): Promise<void> {
 }
 
 const params = new URLSearchParams(window.location.search);
-if (params.get('debug') === 'shell') void startShellDebugPage(params);
+const debugPage = params.get('debug');
+if (debugPage === 'shell') void startShellDebugPage(params);
+else if (debugPage === 'walk') void startWalkDebugPage(params);
 else startScene();
 const healthEl = document.getElementById('health');
 if (healthEl) void pollHealth(healthEl);

@@ -35,4 +35,7 @@ types: install
 	cd frontend && npx --no-install json2ts --ignoreMinAndMaxItems \
 		--bannerComment "/* GENERATED — do not edit. Source: backend/app/schema; run make types. */" \
 		-i ../shared/scene.schema.json -o src/types/scene.ts
-	cd frontend && npx --no-install prettier --write --log-level warn src/types/scene.ts
+	cd frontend && npx --no-install json2ts --ignoreMinAndMaxItems \
+		--bannerComment "/* GENERATED — do not edit. Source: backend/app/schema; run make types. */" \
+		-i ../shared/project.schema.json -o src/types/project.ts
+	cd frontend && npx --no-install prettier --write --log-level warn src/types/scene.ts src/types/project.ts

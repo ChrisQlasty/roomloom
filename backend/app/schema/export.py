@@ -8,6 +8,7 @@ from typing import Any
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
 from pydantic_core import core_schema
 
+from app.schema.project import Project
 from app.schema.scene import Scene
 
 _TS_SCALARS = {"number": "number", "integer": "number", "string": "string", "boolean": "boolean"}
@@ -34,6 +35,11 @@ def scene_schema() -> dict[str, Any]:
     return Scene.model_json_schema(mode="serialization", schema_generator=_SharedSchemaGenerator)
 
 
+def project_schema() -> dict[str, Any]:
+    """JSON Schema of a serialised Project (project.json and `GET /api/projects/{slug}`)."""
+    return Project.model_json_schema(mode="serialization", schema_generator=_SharedSchemaGenerator)
+
+
 def ops_schema() -> dict[str, Any]:
     """Placeholder until the ops engine exists."""
     return {
@@ -49,8 +55,9 @@ def to_json(schema: dict[str, Any]) -> str:
 
 
 def write_schemas(out_dir: Path) -> None:
-    """Write scene.schema.json and ops.schema.json into `out_dir`."""
+    """Write scene.schema.json, project.schema.json and ops.schema.json into `out_dir`."""
     (out_dir / "scene.schema.json").write_text(to_json(scene_schema()), encoding="utf-8")
+    (out_dir / "project.schema.json").write_text(to_json(project_schema()), encoding="utf-8")
     (out_dir / "ops.schema.json").write_text(to_json(ops_schema()), encoding="utf-8")
 
 
