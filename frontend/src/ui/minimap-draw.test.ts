@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { roomCenter } from '../controls/spawn';
 import { loadExampleScene } from '../engine/build/test-scene';
-import { minimapData } from './minimap-data';
+import { minimapData, onMap } from './minimap-data';
 import { drawMinimap, MINIMAP_COLORS, type MinimapContext } from './minimap-draw';
 
 const scene = loadExampleScene();
 const data = minimapData(scene.shell, scene.pins);
 
-/** What a fill or stroke painted: its style and the first point of its path (in map space). */
+/** What a fill or stroke painted: its style, the first point and subpaths of its path (map space). */
 interface Paint {
   op: 'fill' | 'stroke';
   style: string;
+  lineWidth: number;
   first: [number, number] | null;
+  moves: number;
   arcs: number;
 }
 
@@ -19,6 +21,7 @@ interface Paint {
 function recordingContext(): { ctx: MinimapContext; paints: Paint[] } {
   const paints: Paint[] = [];
   let first: [number, number] | null = null;
+  let moves = 0;
   let arcs = 0;
   const ctx = {
     fillStyle: '',
@@ -33,16 +36,22 @@ function recordingContext(): { ctx: MinimapContext; paints: Paint[] } {
     clearRect: () => {},
     beginPath: () => {
       first = null;
+      moves = 0;
       arcs = 0;
     },
-    moveTo: (x: number, y: number) => (first ??= [x, y]),
+    moveTo: (x: number, y: number) => {
+      first ??= [x, y];
+      moves++;
+    },
     lineTo: () => {},
     closePath: () => {},
     arc: () => arcs++,
-    fill: () => paints.push({ op: 'fill', style: String(ctx.fillStyle), first, arcs }),
-    stroke: () => paints.push({ op: 'stroke', style: String(ctx.strokeStyle), first, arcs }),
+    fill: () => paint('fill', String(ctx.fillStyle)),
+    stroke: () => paint('stroke', String(ctx.strokeStyle)),
     fillText: () => {},
   };
+  const paint = (op: Paint['op'], style: string): number =>
+    paints.push({ op, style, lineWidth: ctx.lineWidth, first, moves, arcs });
   return { ctx: ctx as unknown as MinimapContext, paints };
 }
 
@@ -82,11 +91,31 @@ describe('drawMinimap', () => {
     });
   });
 
-  it('strokes every wall piece and the glass, and dots every placed pin', () => {
+  it('fills the walls as one path per thickness, widening thin ones to the minimum', () => {
+    const { ctx, paints } = recordingContext();
+    const focus = { x: 15, z: 10, yawDeg: 0 };
+    drawMinimap(ctx, data, { focus, sizePx: 200, dpr: 1 });
+    const fills = paints.filter((p) => p.op === 'fill' && p.style === MINIMAP_COLORS.wall);
+    const shown = data.walls.map((g) => g.pieces.filter((p) => onMap(p.box, focus)).length);
+    expect(fills.map((f) => f.moves)).toEqual(shown);
+    // 200 CSS px span 2 · MAP_RADIUS_M, so the 1.5 px minimum is 0.225 m.
+    const strokes = paints.filter((p) => p.op === 'stroke' && p.style === MINIMAP_COLORS.wall);
+    const thin = data.walls.filter((g) => g.thickness < 0.225);
+    expect(thin.length).toBeGreaterThan(0);
+    expect(strokes.map((s) => s.lineWidth)).toEqual(
+      thin.map((g) => expect.closeTo(0.225 - g.thickness, 9)),
+    );
+  });
+
+  it('skips wall pieces off the map', () => {
+    const { ctx, paints } = recordingContext();
+    drawMinimap(ctx, data, { focus: { x: 200, z: 200, yawDeg: 0 }, sizePx: 200, dpr: 1 });
+    expect(paints.some((p) => p.style === MINIMAP_COLORS.wall)).toBe(false);
+  });
+
+  it('strokes the glass in one path, and dots every placed pin', () => {
     const { ctx, paints } = recordingContext();
     drawMinimap(ctx, data, { focus: { x: 5, z: 5, yawDeg: 0 }, sizePx: 200, dpr: 1 });
-    const walls = paints.filter((p) => p.op === 'stroke' && p.style === MINIMAP_COLORS.wall);
-    expect(walls).toHaveLength(data.walls.length);
     expect(paints.filter((p) => p.style === MINIMAP_COLORS.glass)).toHaveLength(1);
     const pins = paints.filter((p) => p.op === 'fill' && p.style === MINIMAP_COLORS.pin);
     expect(pins).toHaveLength(data.pins.length);

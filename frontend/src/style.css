@@ -47,8 +47,6 @@ canvas {
   position: fixed;
   right: 16px;
   bottom: 16px;
-  width: 200px;
-  height: 200px;
   mask-image: radial-gradient(circle closest-side, #000 calc(100% - 1px), transparent 100%);
   pointer-events: none;
 }

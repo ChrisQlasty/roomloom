@@ -1,4 +1,19 @@
-import { polygonContains, uncoveredIntervals, type Vec2 } from '../engine/build/geometry-utils';
+import type { GroundFocus } from '../controls/view-controls';
+import {
+  EPS,
+  polygonContains,
+  uncoveredIntervals,
+  type Vec2,
+} from '../engine/build/geometry-utils';
+import {
+  computeWallJoins,
+  faceExtents,
+  framePoint,
+  holeRange,
+  wallFrame,
+  type WallFrame,
+  type WallJoin,
+} from '../engine/build/walls';
 import type { Pin, Shell, Wall } from '../types/scene';
 
 /** World metres from the centre of the minimap to its rim. */
@@ -15,11 +30,17 @@ export interface MapRoom {
   floorLevel: number;
 }
 
-/** A solid piece of wall between openings: a stroke along the centre line, `thickness` wide. */
+/** A solid piece of wall (between openings, or the hub of a junction) as a plan polygon. */
 export interface MapWall {
-  a: Vec2;
-  b: Vec2;
+  polygon: Vec2[];
+  /** Plan bounding box `[minX, minZ, maxX, maxZ]`, to skip pieces off the map. */
+  box: [number, number, number, number];
+}
+
+/** The wall pieces of one thickness, drawn as one path. */
+export interface MapWallGroup {
   thickness: number;
+  pieces: MapWall[];
 }
 
 /** A plan line segment (a window's glass). */
@@ -31,55 +52,88 @@ export interface MapSegment {
 /** Everything the minimap draws, in plan coordinates (world x, z). */
 export interface MinimapData {
   rooms: MapRoom[];
-  walls: MapWall[];
+  walls: MapWallGroup[];
   glass: MapSegment[];
   pins: Vec2[];
 }
 
-/** Where the minimap is centred and which way is up: a plan point and a heading (schema yaw). */
-export interface MapFocus {
-  x: number;
-  z: number;
-  yawDeg: number;
+/** Plan point at `u` along and `w` across (left positive) the wall with frame `f`. */
+function planPoint(f: WallFrame, u: number, w: number): Vec2 {
+  const p = framePoint(f, u, 0, w);
+  return [p[0], p[2]];
 }
 
-function along(wall: Wall, u: number): Vec2 {
-  const length = Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]);
-  const t = u / length;
-  return [wall.a[0] + (wall.b[0] - wall.a[0]) * t, wall.a[1] + (wall.b[1] - wall.a[1]) * t];
+/** A wall piece over `polygon`. */
+export function mapWall(polygon: Vec2[]): MapWall {
+  const xs = polygon.map((p) => p[0]);
+  const zs = polygon.map((p) => p[1]);
+  return { polygon, box: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)] };
 }
 
 /**
- * The solid pieces of `wall`: its centre line minus every opening. Doors and passages leave gaps
- * you can walk through; windows leave gaps that {@link wallGlass} spans. Pieces that reach an end
- * of the wall run half a thickness past it, so strokes close the corners and T-junctions.
+ * The solid pieces of `wall`, the plan of its 3D geometry: each face runs between its own ends as
+ * `join` gives them (flat, mitred, or into a through wall) and openings cut the same holes as in
+ * 3D. Doors and passages leave gaps you can walk through; windows leave gaps that
+ * {@link wallGlass} spans.
  */
-export function wallPieces(wall: Wall): MapWall[] {
-  const length = Math.hypot(wall.b[0] - wall.a[0], wall.b[1] - wall.a[1]);
-  const holes = wall.openings.map((o) => [o.offset, o.offset + o.width] as const);
+export function wallPieces(wall: Wall, join: WallJoin): MapWall[] {
+  const f = wallFrame(wall.a, wall.b);
   const half = wall.thickness / 2;
-  return uncoveredIntervals(0, length, holes).map(([from, to]) => ({
-    a: along(wall, from > 0 ? from : -half),
-    b: along(wall, to < length ? to : length + half),
-    thickness: wall.thickness,
-  }));
+  const { left, right, shared } = faceExtents(f.length, join);
+  const holes = wall.openings.map((o) => holeRange(o, shared)).filter((h) => h !== null);
+  const lo = Math.min(left[0], right[0]);
+  const hi = Math.max(left[1], right[1]);
+  return uncoveredIntervals(lo, hi, holes).map(([from, to]) => {
+    // A piece reaching an end of the wall takes each face's own end there.
+    const [startL, startR] = from <= lo + EPS ? [left[0], right[0]] : [from, from];
+    const [endL, endR] = to >= hi - EPS ? [left[1], right[1]] : [to, to];
+    return mapWall([
+      planPoint(f, startR, -half),
+      planPoint(f, endR, -half),
+      planPoint(f, endL, half),
+      planPoint(f, startL, half),
+    ]);
+  });
 }
 
 /** The glass of every window in `wall`, along its centre line. */
 export function wallGlass(wall: Wall): MapSegment[] {
+  const f = wallFrame(wall.a, wall.b);
   return wall.openings
     .filter((o) => o.kind === 'window')
-    .map((o) => ({ a: along(wall, o.offset), b: along(wall, o.offset + o.width) }));
+    .map((o) => ({ a: planPoint(f, o.offset, 0), b: planPoint(f, o.offset + o.width, 0) }));
+}
+
+/** The wall pieces and junction hubs of `shell`, grouped by thickness (a hub by its thinnest wall). */
+function wallGroups(shell: Shell): MapWallGroup[] {
+  const { joins, hubs } = computeWallJoins(shell.walls);
+  const thickness = new Map(shell.walls.map((w) => [w.id, w.thickness]));
+  const groups = new Map<number, MapWall[]>();
+  const add = (t: number, pieces: MapWall[]): void => {
+    groups.set(t, [...(groups.get(t) ?? []), ...pieces]);
+  };
+  for (const wall of shell.walls) add(wall.thickness, wallPieces(wall, joins.get(wall.id)!));
+  for (const hub of hubs) {
+    add(Math.min(...hub.sides.map((s) => thickness.get(s.wall)!)), [mapWall(hub.polygon)]);
+  }
+  return [...groups].map(([t, pieces]) => ({ thickness: t, pieces }));
 }
 
 /** What the minimap shows of `shell` and `pins` (placed pins only). */
 export function minimapData(shell: Shell, pins: readonly Pin[]): MinimapData {
   return {
     rooms: shell.rooms.map((r) => ({ id: r.id, polygon: r.polygon, floorLevel: r.floor_level })),
-    walls: shell.walls.flatMap(wallPieces),
+    walls: wallGroups(shell),
     glass: shell.walls.flatMap(wallGlass),
     pins: pins.filter((p) => p.placed).map((p) => [p.position[0], p.position[2]] as const),
   };
+}
+
+/** Whether the plan box `box` reaches into the map around `focus`. */
+export function onMap([x0, z0, x1, z1]: MapWall['box'], focus: GroundFocus): boolean {
+  const dx = Math.max(x0 - focus.x, 0, focus.x - x1);
+  const dz = Math.max(z0 - focus.z, 0, focus.z - z1);
+  return Math.hypot(dx, dz) <= MAP_RADIUS_M;
 }
 
 /** The room containing plan point `point`, or null outside the building. */
@@ -92,7 +146,7 @@ export function roomAt(rooms: readonly MapRoom[], point: Vec2): MapRoom | null {
  * with `focus` at `center` (pixels), `scale` pixels per metre and the focus heading pointing up.
  */
 export function mapTransform(
-  focus: MapFocus,
+  focus: GroundFocus,
   scale: number,
   center: Vec2,
 ): [number, number, number, number, number, number] {
@@ -121,7 +175,7 @@ export function northOnScreen(yawDeg: number): Vec2 {
 }
 
 /** Whether the map drawn at focus `drawn` is stale at `next` (null: never drawn). */
-export function focusChanged(drawn: MapFocus | null, next: MapFocus): boolean {
+export function focusChanged(drawn: GroundFocus | null, next: GroundFocus): boolean {
   if (!drawn) return true;
   const turn = Math.abs(((((next.yawDeg - drawn.yawDeg) % 360) + 540) % 360) - 180);
   return Math.hypot(next.x - drawn.x, next.z - drawn.z) > REDRAW_MOVE_M || turn > REDRAW_TURN_DEG;

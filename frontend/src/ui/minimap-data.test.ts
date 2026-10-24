@@ -2,31 +2,35 @@ import { describe, expect, it } from 'vitest';
 import { exampleColliders, hold, walkTo } from '../controls/test-world';
 import { roomCenter } from '../controls/spawn';
 import { Walker } from '../controls/walk';
-import type { Vec2 } from '../engine/build/geometry-utils';
+import { polygonContains, type Vec2 } from '../engine/build/geometry-utils';
 import { loadExampleScene } from '../engine/build/test-scene';
-import { framePoint, wallFrame } from '../engine/build/walls';
+import {
+  computeWallJoins,
+  framePoint,
+  MIN_PIER,
+  wallFrame,
+  type WallJoin,
+} from '../engine/build/walls';
 import type { Wall } from '../types/scene';
 import {
   focusChanged,
+  MAP_RADIUS_M,
   mapTransform,
   minimapData,
   northOnScreen,
+  onMap,
   REDRAW_MOVE_M,
   roomAt,
   wallGlass,
   wallPieces,
   type MapSegment,
+  type MapWall,
 } from './minimap-data';
 
 const scene = loadExampleScene();
 const data = minimapData(scene.shell, scene.pins);
-
-/** Distance from plan point `p` to segment `s`. */
-function distanceToSegment([px, pz]: Vec2, { a, b }: MapSegment): number {
-  const [dx, dz] = [b[0] - a[0], b[1] - a[1]];
-  const t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / (dx * dx + dz * dz)));
-  return Math.hypot(px - (a[0] + t * dx), pz - (a[1] + t * dz));
-}
+const pieces = data.walls.flatMap((g) => g.pieces);
+const joins = computeWallJoins(scene.shell.walls).joins;
 
 /** Plan point `w` metres from the centre line of `wall` (positive: left side) at `u` along it. */
 function besideWall(wall: Wall, u: number, w: number): Vec2 {
@@ -34,13 +38,24 @@ function besideWall(wall: Wall, u: number, w: number): Vec2 {
   return [p[0], p[2]];
 }
 
+const round = (p: Vec2): number[] => p.map((v) => Math.round(v * 1e6) / 1e6 + 0);
+
 /** `segments` with coordinates rounded to micrometres, to compare without float noise. */
-const rounded = <T extends MapSegment>(segments: T[]): T[] =>
-  segments.map((s) => ({
-    ...s,
-    a: s.a.map((v) => Math.round(v * 1e6) / 1e6),
-    b: s.b.map((v) => Math.round(v * 1e6) / 1e6),
-  }));
+const rounded = (segments: MapSegment[]): { a: number[]; b: number[] }[] =>
+  segments.map((s) => ({ a: round(s.a), b: round(s.b) }));
+
+/** The polygons of `walls`, rounded likewise. */
+const polygons = (walls: MapWall[]): number[][][] => walls.map((w) => w.polygon.map(round));
+
+/** Whether plan point `p` lies inside any of `walls`. */
+const covered = (walls: MapWall[], p: Vec2): boolean =>
+  walls.some((w) => polygonContains(w.polygon, p));
+
+/** Ends meeting nothing: the wall stops flat at its end points. */
+const freeEnds: WallJoin = {
+  a: { extLeft: 0, extRight: 0, joiners: [], covers: [] },
+  b: { extLeft: 0, extRight: 0, joiners: [], covers: [] },
+};
 
 const wallLength = (w: Wall): number => Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
 
@@ -60,11 +75,27 @@ describe('wall pieces', () => {
     ],
   } as unknown as Wall;
 
-  it('leaves a gap at every opening and runs half a thickness past the wall ends', () => {
-    expect(rounded(wallPieces(wall))).toEqual([
-      { a: [-0.15, 0], b: [2, 0], thickness: 0.3 },
-      { a: [3, 0], b: [5, 0], thickness: 0.3 },
-      { a: [6.5, 0], b: [10.15, 0], thickness: 0.3 },
+  it('leaves a gap at every opening and ends flat at free ends', () => {
+    // Walking a→b east, the left side is north (−Z).
+    expect(polygons(wallPieces(wall, freeEnds))).toEqual([
+      [
+        [0, 0.15],
+        [2, 0.15],
+        [2, -0.15],
+        [0, -0.15],
+      ],
+      [
+        [3, 0.15],
+        [5, 0.15],
+        [5, -0.15],
+        [3, -0.15],
+      ],
+      [
+        [6.5, 0.15],
+        [10, 0.15],
+        [10, -0.15],
+        [6.5, -0.15],
+      ],
     ]);
   });
 
@@ -72,18 +103,60 @@ describe('wall pieces', () => {
     expect(rounded(wallGlass(wall))).toEqual([{ a: [5, 0], b: [6.5, 0] }]);
   });
 
-  it('keeps an opening at a wall end open there', () => {
+  it('keeps an opening at a wall end open there, but for the pier the 3D wall keeps', () => {
     const atEnd = { ...wall, openings: [{ ...wall.openings[0]!, offset: 0 }] };
-    expect(rounded(wallPieces(atEnd))).toEqual([{ a: [1, 0], b: [10.15, 0], thickness: 0.3 }]);
+    expect(polygons(wallPieces(atEnd, freeEnds))).toEqual([
+      [
+        [0, 0.15],
+        [MIN_PIER, 0.15],
+        [MIN_PIER, -0.15],
+        [0, -0.15],
+      ],
+      [
+        [1, 0.15],
+        [10, 0.15],
+        [10, -0.15],
+        [1, -0.15],
+      ],
+    ]);
+  });
+
+  it('does not reach into a door at the start of a wall continuing straight on', () => {
+    const next: Wall = {
+      ...wall,
+      id: 'next',
+      a: [10, 0],
+      b: [15, 0],
+      openings: [{ ...wall.openings[0]!, offset: 0 }],
+    };
+    const { joins: j } = computeWallJoins([wall, next]);
+    const both = [...wallPieces(wall, j.get('w')!), ...wallPieces(next, j.get('next')!)];
+    expect(covered(both, [10 + MIN_PIER / 2, 0])).toBe(true);
+    for (const x of [10.05, 10.5, 10.95]) expect(covered(both, [x, 0.1])).toBe(false);
+  });
+
+  it('closes a corner of unequal walls without running past the thinner one', () => {
+    const thin: Wall = {
+      ...wall,
+      id: 'thin',
+      a: [10, 0],
+      b: [10, 5],
+      thickness: 0.12,
+      openings: [],
+    };
+    const { joins: j } = computeWallJoins([wall, thin]);
+    const both = [...wallPieces(wall, j.get('w')!), ...wallPieces(thin, j.get('thin')!)];
+    // The outer corner (east of the thin wall, north of the thick one) is filled, nothing beyond.
+    expect(covered(both, [10.05, -0.14])).toBe(true);
+    expect(covered(both, [10.07, -0.1])).toBe(false);
+    expect(covered(both, [10.05, -0.16])).toBe(false);
   });
 
   it.each(scene.shell.walls)('$id: solid exactly where the 3D wall has no hole', (w) => {
-    const pieces = wallPieces(w);
+    const own = wallPieces(w, joins.get(w.id)!);
     for (let u = 0.05; u < wallLength(w); u += 0.1) {
-      const point = besideWall(w, u, 0);
       const inHole = w.openings.some((o) => u > o.offset && u < o.offset + o.width);
-      const onMap = pieces.some((p) => distanceToSegment(point, p) < 1e-9);
-      expect(onMap).toBe(!inHole);
+      expect(covered(own, besideWall(w, u, 0))).toBe(!inHole);
     }
   });
 });
@@ -121,11 +194,7 @@ describe('minimap data of the example', () => {
       hold(walker, {}, 0.2);
       const { path, arrived } = walkTo(walker, besideWall(wall, u, -away));
       expect(arrived).toBe(true);
-      for (const p of path) {
-        for (const piece of data.walls) {
-          expect(distanceToSegment([p.x, p.z], piece)).toBeGreaterThan(piece.thickness / 2);
-        }
-      }
+      for (const p of path) expect(covered(pieces, [p.x, p.z])).toBe(false);
     },
   );
 });
@@ -164,6 +233,18 @@ describe('map transform', () => {
     const [nx, ny] = northOnScreen(123);
     expect(apply(m, [0, -1])[0]).toBeCloseTo(nx);
     expect(apply(m, [0, -1])[1]).toBeCloseTo(ny);
+  });
+});
+
+describe('map culling', () => {
+  const box: MapWall['box'] = [0, 0, 2, 1];
+
+  it('keeps pieces reaching into the map and drops those beyond its rim', () => {
+    expect(onMap(box, { x: 1, z: 0.5, yawDeg: 0 })).toBe(true);
+    expect(onMap(box, { x: 2 + MAP_RADIUS_M - 0.01, z: 0.5, yawDeg: 0 })).toBe(true);
+    expect(onMap(box, { x: 2 + MAP_RADIUS_M + 0.01, z: 0.5, yawDeg: 0 })).toBe(false);
+    const corner = MAP_RADIUS_M / Math.SQRT2 + 0.01;
+    expect(onMap(box, { x: 2 + corner, z: 1 + corner, yawDeg: 0 })).toBe(false);
   });
 });
 

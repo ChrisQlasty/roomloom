@@ -3,8 +3,7 @@ import { assetUrl } from '../../net/api';
 import type { Scene } from '../../types/scene';
 import { MaterialLibrary } from '../build/materials';
 import { ShellBuilder } from '../build/shell';
-
-const MAX_PIXEL_RATIO = 2;
+import { drawPixelRatio } from '../pixel-ratio';
 
 /** What the developer pages share: a full-window renderer and a lit world with the shell in it. */
 export interface DebugWorld {
@@ -45,7 +44,7 @@ export function createDebugWorld(
   world.add(shell.root);
 
   const fit = (): void => {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+    renderer.setPixelRatio(drawPixelRatio());
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

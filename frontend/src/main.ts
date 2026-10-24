@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 import { startShellDebugPage } from './engine/debug/shell-page';
 import { startWalkDebugPage } from './engine/debug/walk-page';
+import { drawPixelRatio } from './engine/pixel-ratio';
 import { fetchHealth } from './net/api';
 
 const HEALTH_POLL_MS = 5000;
-/** Higher ratios cost fill rate with little visible gain (performance budget, AGENTS.md rule 9). */
-const MAX_PIXEL_RATIO = 2;
 
 /** Call `onChange` whenever devicePixelRatio changes, e.g. when the window moves to another monitor. */
 function watchPixelRatio(onChange: () => void): void {
@@ -42,7 +41,7 @@ function startScene(): void {
   scene.add(box);
 
   const fitToWindow = (): void => {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+    renderer.setPixelRatio(drawPixelRatio());
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

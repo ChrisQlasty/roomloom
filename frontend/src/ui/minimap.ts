@@ -1,6 +1,8 @@
+import type { GroundFocus } from '../controls/view-controls';
+import { drawPixelRatio } from '../engine/pixel-ratio';
 import type { Pin, Shell } from '../types/scene';
 import { drawMinimap } from './minimap-draw';
-import { focusChanged, minimapData, type MapFocus, type MinimapData } from './minimap-data';
+import { focusChanged, minimapData, type MinimapData } from './minimap-data';
 
 /** Diameter of the minimap in CSS pixels. */
 export const MINIMAP_SIZE_PX = 200;
@@ -16,12 +18,13 @@ export class Minimap {
   lastDrawMs = 0;
   private readonly ctx: CanvasRenderingContext2D;
   private data: MinimapData = { rooms: [], walls: [], glass: [], pins: [] };
-  private drawn: MapFocus | null = null;
+  private drawn: GroundFocus | null = null;
   private dpr = 0;
 
   constructor(parent: HTMLElement = document.body) {
     this.element = document.createElement('canvas');
     this.element.className = 'minimap';
+    this.element.style.width = this.element.style.height = `${MINIMAP_SIZE_PX}px`;
     const ctx = this.element.getContext('2d');
     if (!ctx) throw new Error('Canvas2D is not available');
     this.ctx = ctx;
@@ -35,8 +38,8 @@ export class Minimap {
   }
 
   /** Centre the map on `focus`, redrawing if it changed enough since the last frame drawn. */
-  update(focus: MapFocus): void {
-    const dpr = window.devicePixelRatio || 1;
+  update(focus: GroundFocus): void {
+    const dpr = drawPixelRatio();
     if (dpr !== this.dpr) {
       this.dpr = dpr;
       this.element.width = this.element.height = Math.round(MINIMAP_SIZE_PX * dpr);

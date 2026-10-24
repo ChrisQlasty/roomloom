@@ -1,10 +1,11 @@
+import type { GroundFocus } from '../controls/view-controls';
 import type { Vec2 } from '../engine/build/geometry-utils';
 import {
   MAP_RADIUS_M,
   mapTransform,
   northOnScreen,
+  onMap,
   roomAt,
-  type MapFocus,
   type MinimapData,
 } from './minimap-data';
 
@@ -35,7 +36,7 @@ const LEVEL_EPS = 0.01;
 
 /** How to draw one frame: the focus, the map's diameter in CSS pixels and the pixel ratio. */
 export interface MinimapView {
-  focus: MapFocus;
+  focus: GroundFocus;
   sizePx: number;
   dpr: number;
 }
@@ -63,8 +64,8 @@ export type MinimapContext = Pick<
   | 'textBaseline'
 >;
 
-function polygonPath(ctx: MinimapContext, polygon: readonly Vec2[]): void {
-  ctx.beginPath();
+/** Add `polygon` to the current path. */
+function addPolygon(ctx: MinimapContext, polygon: readonly Vec2[]): void {
   polygon.forEach(([x, z], i) => (i === 0 ? ctx.moveTo(x, z) : ctx.lineTo(x, z)));
   ctx.closePath();
 }
@@ -112,8 +113,9 @@ function drawNorth(
 
 /**
  * Draw the minimap of `data` onto a square canvas of `view.sizePx × view.dpr` device pixels:
- * rooms (the one at the focus highlighted, lower ones darker), walls with gaps at openings,
- * window glass, placed pins, the player arrow and the north marker.
+ * rooms (the one at the focus highlighted, lower ones darker), walls with gaps at openings (only
+ * the pieces reaching into the map), window glass, placed pins, the player arrow and the north
+ * marker.
  */
 export function drawMinimap(ctx: MinimapContext, data: MinimapData, view: MinimapView): void {
   const { focus, dpr } = view;
@@ -133,7 +135,8 @@ export function drawMinimap(ctx: MinimapContext, data: MinimapData, view: Minima
   const current = roomAt(data.rooms, [focus.x, focus.z]);
   const level = current?.floorLevel ?? 0;
   for (const room of data.rooms) {
-    polygonPath(ctx, room.polygon);
+    ctx.beginPath();
+    addPolygon(ctx, room.polygon);
     ctx.fillStyle =
       room === current
         ? MINIMAP_COLORS.currentRoom
@@ -143,14 +146,20 @@ export function drawMinimap(ctx: MinimapContext, data: MinimapData, view: Minima
     ctx.fill();
   }
 
-  ctx.strokeStyle = MINIMAP_COLORS.wall;
-  ctx.lineCap = 'butt';
-  for (const wall of data.walls) {
+  // One path per wall thickness; walls thinner than MIN_WALL_PX get an outline making up the rest.
+  const minWall = MIN_WALL_PX * px;
+  ctx.fillStyle = ctx.strokeStyle = MINIMAP_COLORS.wall;
+  ctx.lineJoin = 'round';
+  for (const { thickness, pieces } of data.walls) {
+    const shown = pieces.filter((p) => onMap(p.box, focus));
+    if (!shown.length) continue;
     ctx.beginPath();
-    ctx.moveTo(...wall.a);
-    ctx.lineTo(...wall.b);
-    ctx.lineWidth = Math.max(wall.thickness, MIN_WALL_PX * px);
-    ctx.stroke();
+    for (const piece of shown) addPolygon(ctx, piece.polygon);
+    ctx.fill();
+    if (thickness < minWall) {
+      ctx.lineWidth = minWall - thickness;
+      ctx.stroke();
+    }
   }
 
   if (data.glass.length) {
@@ -161,6 +170,7 @@ export function drawMinimap(ctx: MinimapContext, data: MinimapData, view: Minima
     }
     ctx.strokeStyle = MINIMAP_COLORS.glass;
     ctx.lineWidth = GLASS_PX * px;
+    ctx.lineCap = 'butt';
     ctx.stroke();
   }
 
@@ -175,7 +185,6 @@ export function drawMinimap(ctx: MinimapContext, data: MinimapData, view: Minima
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.lineWidth = 1.5 * dpr;
-  ctx.lineJoin = 'round';
   drawArrow(ctx, center, ARROW_PX * dpr);
   circle(ctx, radius, radius, radius - (RIM_PX * dpr) / 2);
   ctx.strokeStyle = MINIMAP_COLORS.rim;

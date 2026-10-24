@@ -433,30 +433,55 @@ export function capPieces(
   return pieces;
 }
 
+/** Where a wall's faces run along u (they differ where an end is mitred), and the stretch both share. */
+export interface FaceExtents {
+  left: Vec2;
+  right: Vec2;
+  shared: Vec2;
+}
+
+/** The face extents of a wall `length` long whose ends meet other walls as `join` says. */
+export function faceExtents(length: number, join: WallJoin): FaceExtents {
+  const left: Vec2 = [-join.a.extLeft, length + join.b.extLeft];
+  const right: Vec2 = [-join.a.extRight, length + join.b.extRight];
+  return { left, right, shared: [Math.max(left[0], right[0]), Math.min(left[1], right[1])] };
+}
+
 /**
- * Openings as holes in wall-local coordinates, sorted along the wall. Holes are kept at least
- * {@link MIN_PIER} inside `[uMin, uMax]` (the wall faces' common length), and dropped if nothing
- * is left of them.
+ * The u range of the hole `opening` cuts, kept at least {@link MIN_PIER} inside `[uMin, uMax]`
+ * (the wall faces' shared extent); null if nothing is left of it.
  */
-export function layoutHoles(
-  openings: readonly Opening[],
-  span: WallSpan,
+export function holeRange(
+  opening: Pick<Opening, 'offset' | 'width'>,
   [uMin, uMax]: Vec2 = [-Infinity, Infinity],
-): Hole[] {
+): Vec2 | null {
+  const u0 = Math.max(opening.offset, uMin + MIN_PIER);
+  const u1 = Math.min(opening.offset + opening.width, uMax - MIN_PIER);
+  return u1 - u0 > EPS ? [u0, u1] : null;
+}
+
+/**
+ * Openings as holes in wall-local coordinates, sorted along the wall, each over its
+ * {@link holeRange} within `extent`.
+ */
+export function layoutHoles(openings: readonly Opening[], span: WallSpan, extent?: Vec2): Hole[] {
   return openings
-    .map((o) => {
+    .flatMap((o) => {
+      const range = holeRange(o, extent);
+      if (!range) return [];
       const v0 = span.threshold + o.sill;
-      return {
-        id: o.id,
-        kind: o.kind,
-        u0: Math.max(o.offset, uMin + MIN_PIER),
-        u1: Math.min(o.offset + o.width, uMax - MIN_PIER),
-        v0,
-        v1: v0 + o.height,
-        notch: v0 <= span.bottom + EPS,
-      };
+      return [
+        {
+          id: o.id,
+          kind: o.kind,
+          u0: range[0],
+          u1: range[1],
+          v0,
+          v1: v0 + o.height,
+          notch: v0 <= span.bottom + EPS,
+        },
+      ];
     })
-    .filter((h) => h.u1 - h.u0 > EPS)
     .sort((p, q) => p.u0 - q.u0);
 }
 
@@ -508,14 +533,8 @@ export function buildWallGeometry(
   const f = wallFrame(wall.a, wall.b);
   const half = wall.thickness / 2;
   // Each face runs between its own edge ends, which differ where an end is mitred.
-  const extent = {
-    left: [-join.a.extLeft, f.length + join.b.extLeft] as const,
-    right: [-join.a.extRight, f.length + join.b.extRight] as const,
-  };
-  const holes = layoutHoles(wall.openings, span, [
-    Math.max(extent.left[0], extent.right[0]),
-    Math.min(extent.left[1], extent.right[1]),
-  ]);
+  const extent = faceExtents(f.length, join);
+  const holes = layoutHoles(wall.openings, span, extent.shared);
   const inner = holes
     .filter((h) => !h.notch)
     .map((h): Vec2[] => [
