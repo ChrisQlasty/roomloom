@@ -109,15 +109,19 @@ export class OrbitMode {
     this.panArea = bounds.clone().expandByScalar(radius * PAN_MARGIN_FACTOR);
   }
 
-  /** The view to fly to when entering orbit mode from the eye pose `from`. */
+  /**
+   * The view to fly to when entering orbit mode from the eye pose `from`. Centres the orbit on its
+   * target right away, so the centre is known during the flight too.
+   */
   startView(from: Pose): OrbitView {
     const camera = this.controls.object as THREE.PerspectiveCamera;
-    return orbitStartView(this.bounds, from, camera.fov, camera.aspect);
+    const view = orbitStartView(this.bounds, from, camera.fov, camera.aspect);
+    this.controls.target.copy(view.target);
+    return view;
   }
 
   /** Take over the camera, which must already be at a view returned by {@link startView}. */
   enable(): void {
-    this.controls.target.copy(sphereOf(this.bounds).center);
     this.controls.enabled = true;
     this.controls.update();
   }

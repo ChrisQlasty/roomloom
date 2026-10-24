@@ -90,16 +90,19 @@ export class ViewControls {
   }
 
   /**
-   * What the minimap centres on: where the walker stands, or in orbit mode the point the camera
-   * orbits (its ground target); the heading is the camera's in both.
+   * What the minimap centres on: where the walker stands, facing the walker's heading (also while
+   * the camera flies back from orbit), or in orbit mode the point the camera orbits (its ground
+   * target), facing the camera's heading.
    */
   focus(): GroundFocus {
-    const yawDeg = (this.lastPose ?? poseOf(this.camera)).yawDeg;
     if (this.current === 'orbit') {
       const { x, z } = this.orbit.controls.target;
-      return { x, z, yawDeg };
+      return { x, z, yawDeg: (this.lastPose ?? poseOf(this.camera)).yawDeg };
     }
-    const [x, , z] = this.walker.pose().position;
+    const {
+      position: [x, , z],
+      yawDeg,
+    } = this.walker.pose();
     return { x, z, yawDeg };
   }
 
@@ -156,8 +159,6 @@ export class ViewControls {
     this.pointer.release();
     this.pointer.enabled = false;
     const view = this.orbit.startView(this.walker.pose());
-    // Set the orbit centre now, so focus() reports it during the transition too.
-    this.orbit.controls.target.copy(view.target);
     this.animateTo(viewState(view), () => this.orbit.enable());
     this.setMode('orbit');
   }
